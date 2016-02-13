@@ -17,6 +17,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <bcm2835.h>
+#include <time.h>
  
 #define PAGE_SIZE (4*1024)
 #define BLOCK_SIZE (4*1024)
@@ -114,7 +115,7 @@ void clear_io();
  
 int main(int argc, char **argv)
 {
-  int g,rep,i,addr;
+  int g,rep,i,addr, page=4;
   char byte;
   int offset = 0;
   int size = 0x4000;
@@ -148,15 +149,30 @@ int main(int argc, char **argv)
   MSX_SET_OUTPUT(MSX_MERQ_PIN);  
   MSX_SET_OUTPUT(MSX_IORQ_PIN);  
   GPIO_SET = MSX_RST| MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;  
+  GPIO_CLR = MSX_RST;
+  usleep(1000);
+  GPIO_SET = MSX_RST;
   MSX_SET_INPUT(MSX_WAIT_PIN);  
   MSX_SET_INPUT(MSX_INT_PIN);  
   MSX_SET_INPUT(MSX_BUSDIR_PIN);  
   for (i = 0; i < 8; i++)
 	MSX_SET_INPUT(MSX_D0_PIN+i);
   
+  writemsx(1, 0x6000, 3);
   for(addr=offset; addr < offset + size; addr ++)
   {
-	  byte = readmsx(1, addr);
+	  if (addr > 0xbfff)
+	  {
+		 if (!(addr & 0x1fff)) {
+			writemsx(1, 0x6000, page++);
+			printf("page:%d, address=0x%04x\n", page-1, addr );
+		 }
+		 byte = readmsx(1, 0x6000 + (addr & 0x1ffff));
+	  }
+	  else
+	  {
+		  byte = readmsx(1, addr);
+	  }
 	  if (fp)
 		  fwrite(&byte, 1, 1, fp);
 	  else
@@ -172,35 +188,38 @@ int main(int argc, char **argv)
  {
 	 unsigned char address[2];
 	 unsigned char byte;
+	 struct timespec tv, tr;
+	 tv.tv_sec = 0;
+	 tv.tv_nsec = 200;
 	 address[0] = (addr >> 8) & 0xff;
 	 address[1] = (addr & 0xff);
-	 GPIO_SET =  MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;
+	 GPIO_SET = MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;
 	 bcm2835_spi_transfern((char *)&address,2);
-	 GPIO_CLR = MSX_CLK | MSX_RD | (slot == 1 ? MSX_CS1 : MSX_CS2) | MSX_MERQ | MSX_CS12;
-	 GPIO_SET = MSX_CLK;
-	 GPIO_CLR = MSX_CLK;
-	 GPIO_SET = MSX_CLK;
-	 usleep(1);
+	 GPIO_CLR = MSX_CLK | MSX_RD | MSX_SLTSL | (addr < 0x8000 ? MSX_CS1 : MSX_CS2) | MSX_MERQ | MSX_CS12;
+	 nanosleep(&tv, &tr);
+	 //usleep(1);
 	 byte = MSX_GET_DATA;
-	 GPIO_SET = MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_CS12 | MSX_MERQ | MSX_IORQ;
+	 while(GET_GPIO(MSX_WAIT));
+	 GPIO_SET = MSX_CLK | MSX_RD | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_CS12 | MSX_MERQ;
 	 return byte;	 
  }
  
  void writemsx(int slot, int addr, int byte)
  {
-	 char data[3];
-	 data[0] = addr & 0xff;
+	 unsigned char data[3];
+	 data[2] = addr & 0xff;
 	 data[1] = (addr >> 8) & 0xff;
-	 data[2] = byte;
+	 data[0] = byte;
 	 GPIO_SET = MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;
 	 bcm2835_spi_transfern(data,3);
-	 GPIO_CLR = MSX_CLK | MSX_WR | (slot == 1 ? MSX_CS1 : MSX_CS2);
+	 GPIO_CLR = MSX_CLK | MSX_WR | (addr < 0x8000 ? MSX_CS1 : MSX_CS2);
 	 GPIO_SET = MSX_CLK;
 	 GPIO_CLR = MSX_CLK;
 	 GPIO_SET = MSX_CLK;
 	 GPIO_CLR = MSX_CLK;
 	 GPIO_SET = MSX_CLK;
 	 GPIO_CLR = MSX_CLK;
+	 usleep(1);
 	 GPIO_SET = MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;
 	 return;
  }
