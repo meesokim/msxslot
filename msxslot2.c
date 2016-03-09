@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 {
   int g,rep,i,addr, page=4;
   char byte;
-  int offset = 0;
+  int offset = 0x4000;
   int size = 0x4000;
   FILE *fp = 0;
   
@@ -136,29 +136,18 @@ int main(int argc, char **argv)
  
   // Set up gpi pointer for direct register access
   setup_io();
- 
- 
-  MSX_SET_OUTPUT(MSX_RST_PIN);
-  MSX_SET_OUTPUT(MSX_CLK_PIN);  
-  MSX_SET_OUTPUT(MSX_RD_PIN);  
-  MSX_SET_OUTPUT(MSX_WR_PIN);  
-  MSX_SET_OUTPUT(MSX_SLTSL_PIN);  
-  MSX_SET_OUTPUT(MSX_CS1_PIN);  
-  MSX_SET_OUTPUT(MSX_CS2_PIN);  
-  MSX_SET_OUTPUT(MSX_CS12_PIN);  
-  MSX_SET_OUTPUT(MSX_MERQ_PIN);  
-  MSX_SET_OUTPUT(MSX_IORQ_PIN);  
-  GPIO_SET = MSX_RST| MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;  
-  GPIO_CLR = MSX_RST;
-  usleep(1000);
-  GPIO_SET = MSX_RST;
-  MSX_SET_INPUT(MSX_WAIT_PIN);  
-  MSX_SET_INPUT(MSX_INT_PIN);  
-  MSX_SET_INPUT(MSX_BUSDIR_PIN);  
-  for (i = 0; i < 8; i++)
-	MSX_SET_INPUT(MSX_D0_PIN+i);
+  //MSX_SET_OUTPUT(MSX_INT_PIN);
+  MSX_SET_INPUT(6);
+  MSX_SET_INPUT(13);
+  MSX_SET_INPUT(19);
+  MSX_SET_INPUT(26);
+  MSX_SET_INPUT(12);
+  MSX_SET_INPUT(16);
+  MSX_SET_INPUT(20);
+  MSX_SET_INPUT(21);
   
-  writemsx(1, 0x6000, 3);
+  
+  //writemsx(1, 0x6000, 3);
   for(addr=offset; addr < offset + size; addr ++)
   {
 	  if (addr > 0xbfff)
@@ -184,43 +173,70 @@ int main(int argc, char **argv)
  
 } // main
  
+ #define RD    (1<<0)
+ #define WR    (1<<1)
+ #define MERQ  (1<<2)
+ #define IORQ  (1<<3)
+ #define SLTSL (1<<4)
+ 
+ #define LD    (1<<6)
+ 
  int readmsx(int slot, int addr)
  {
-	 unsigned char address[2];
+	 unsigned char data[3];
+	 unsigned char recv[2];
 	 unsigned char byte;
+	 int i=0;
 	 struct timespec tv, tr;
 	 tv.tv_sec = 0;
 	 tv.tv_nsec = 200;
-	 address[0] = (addr >> 8) & 0xff;
-	 address[1] = (addr & 0xff);
-	 GPIO_SET = MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;
-	 bcm2835_spi_transfern((char *)&address,2);
-	 GPIO_CLR = MSX_RD | MSX_SLTSL | (addr < 0x8000 ? MSX_CS1 : MSX_CS2) | MSX_MERQ | (addr >= 0x4000 && addr < 0xc000 ? MSX_CS12 : 0);
-	 nanosleep(&tv, &tr);
-	 //usleep(1);
-	 byte = MSX_GET_DATA;
-//	 while(GET_GPIO(MSX_WAIT));
-	 GPIO_SET = MSX_CLK | MSX_RD | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_CS12 | MSX_MERQ | (addr >= 0x4000 && addr < 0xc000 ? MSX_CS12 : 0);
+	addr = 0x0;
+	 data[0] = (addr >> 8) & 0xff;
+	 data[1] = (addr & 0xff);
+	 data[2] = MERQ;
+	 GPIO_SET = LD;
+	 bcm2835_spi_chipSelect(BCM2835_SPI_CS0);	 
+	 bcm2835_spi_transfern((char *)&data,sizeof(data));
+	 printf("addr=0x%04x\n", addr);
+	 exit(0);
+//	 nanosleep(&tv, &tr);
+	 GPIO_CLR = LD;
+	 i = *(gpio+13);
+	 data[0] = 0xff;
+	 bcm2835_spi_chipSelect(BCM2835_SPI_CS0);	 
+	 GPIO_SET = LD;
+	 bcm2835_spi_transfern((char *)&data,1);
+	 bcm2835_spi_chipSelect(BCM2835_SPI_CS1);
+	 {
+		bcm2835_spi_transfernb((char *)&data,(char*)&recv,sizeof(recv));
+	 };// while ((!recv[1]&1)); 
+	 //printf("%02x\n", recv[1]);
+	 //byte = (i&(1<<6)?1:0)|(i&(1<<13)?1<<2:0)|(i&(1<<19)?1<<4:0)|(i&(1<<26)?1<<6:0)|(i&(1<<12)?1<<1:0)|(i&(1<<16)?1<<3:0)|(i&(1<<20)?1<<5:0)|(i&(1<<21)?1<<7:0);
+	 byte = recv[0];
 	 return byte;	 
  }
  
  void writemsx(int slot, int addr, int byte)
  {
-	 unsigned char data[3];
+	 unsigned char data[4];
+	 unsigned char recv[1];
+	 data[3] = RD | IORQ;
 	 data[2] = addr & 0xff;
 	 data[1] = (addr >> 8) & 0xff;
 	 data[0] = byte;
-	 GPIO_SET = MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ;
-	 bcm2835_spi_transfern(data,3);
-	 GPIO_CLR = MSX_CLK | MSX_WR | (addr < 0x8000 ? MSX_CS1 : MSX_CS2) | MSX_MERQ | MSX_CS12 | MSX_SLTSL | (addr >= 0x4000 && addr < 0xc000 ? MSX_CS12 : 0);
-	 GPIO_SET = MSX_CLK;
-	 GPIO_CLR = MSX_CLK;
-	 GPIO_SET = MSX_CLK;
-	 GPIO_CLR = MSX_CLK;
-	 GPIO_SET = MSX_CLK;
-	 GPIO_CLR = MSX_CLK;
+	 GPIO_SET = LD;
+	 bcm2835_spi_chipSelect(BCM2835_SPI_CS0);	 
+	 bcm2835_spi_transfern(data,sizeof(data));
+	 GPIO_CLR = LD;
 	 usleep(1);
-	 GPIO_SET = MSX_CLK | MSX_RD | MSX_WR | MSX_SLTSL | MSX_CS1 | MSX_CS2 | MSX_MERQ | MSX_IORQ | MSX_SLTSL | (addr >= 0x4000 && addr < 0xc000 ? MSX_CS12 : 0);
+	 GPIO_SET = LD;
+	 bcm2835_spi_chipSelect(BCM2835_SPI_CS1);
+	 {
+		bcm2835_spi_transfernb((char *)&data,(char*)&recv,sizeof(recv));
+	 } while ((!recv[1]&1)); 	 
+	 data[0] = 0xff;
+	 bcm2835_spi_chipSelect(BCM2835_SPI_CS0);	 
+	 bcm2835_spi_transfern((char *)&data,1);	 
 	 return;
  }
 //
@@ -262,9 +278,10 @@ void setup_io()
     bcm2835_spi_begin();
     bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);      // The default
     bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                   // The default
-    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_4); 
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_8); 
     bcm2835_spi_chipSelect(BCM2835_SPI_CS0);                      // The default
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);      // the default   
+    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS1, LOW);      // the default   
 } // setup_io
 
 void clear_io()
