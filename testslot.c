@@ -136,14 +136,13 @@ volatile unsigned *clock_base;
 
 inline void msxset(int x, int y)   
 {
-	int i=0;
+	int i;
 	MSX_OUTPUT_MODE;
-	GPIO_SET = MSX_W;
-	GPIO_SET = (0xff &  (y)) << MSX_D0_PIN | MSX_CS | MSX_CLK |  ((3 & (x)) << MSX_A0_PIN);
-	GPIO_CLR = (0xff & ~(y)) << MSX_D0_PIN | MSX_CS | MSX_W | ((3 & ~(x)) << MSX_A0_PIN);
-	GPIO_CLR = MSX_CLK;
+	GPIO_SET = (0xff &  (y)) << MSX_D0_PIN | ((3 &  (x)) << MSX_A0_PIN);
+	GPIO_CLR = (0xff & ~(y)) << MSX_D0_PIN | ((3 & ~(x)) << MSX_A0_PIN);
+	GPIO_CLR = MSX_CS | MSX_CLK;
 	for(i=0;i<100;i++);
-    GPIO_SET = MSX_CS | MSX_CLK;
+    GPIO_SET = MSX_CS | MSX_CLK | MSX_W;	
 	MSX_INPUT_MODE;
     return;
 }
@@ -152,14 +151,13 @@ inline int msxget(int x)
 {
 	int i=0;
 	int byte;
-	MSX_INPUT_MODE;
-	GPIO_SET = MSX_W;
-    GPIO_SET = MSX_CS | MSX_CLK | MSX_W | ((3 & (x)) << MSX_A0_PIN); \
-	GPIO_CLR = MSX_CS | ((3 & ~(x)) << MSX_A0_PIN);
-	GPIO_CLR = MSX_CLK;
-//	for(i=0;i<100;i++);
+	GPIO_CLR = MSX_W;
+    GPIO_SET = ((3 & (x)) << MSX_A0_PIN);
+	GPIO_CLR = ((3 & ~(x)) << MSX_A0_PIN);
+	GPIO_CLR = MSX_CS | MSX_CLK;
+	for(i=0;i<100;i++);
 	byte = MSX_GET_DATA;
-    GPIO_SET = MSX_CS | MSX_CLK;	
+    GPIO_SET = MSX_CS | MSX_CLK | MSX_W;	
 	return byte;
 }
 
