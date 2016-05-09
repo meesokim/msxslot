@@ -17,6 +17,7 @@ output reg msxclk;
 reg [15:0] addr;
 reg [2:0] count;
 reg [2:0] rcnt;
+reg [2:0] wcnt;
 
 assign mcs1   = (!msltsl1 | !msltsl2) & maddr[14] & !maddr[15] ? 1'b0 : 1'b1;
 assign mcs2   = (!msltsl1 | !msltsl2) & !maddr[14] & maddr[15] ? 1'b0 : 1'b1;
@@ -26,6 +27,8 @@ assign mswsrc = 1'b1;
 initial begin
 	count <= 0;
 	ready <= 0;
+	mreset <= 1;
+	md[15:0] <= 16'bZ;
 end
 
 always @ (negedge clk) begin
@@ -33,51 +36,68 @@ always @ (negedge clk) begin
 		begin
 			case (a0)
 			0: begin
+					if (!ready)
+					begin
 					md <= 16'bZ;
 					maddr <= md;
-				   addr <= md;	
-					mrd <= rw;
-					mwr <= !rw;
-					mmreq <= mmeio;
-					miorq <= !mmeio;
-					if (!mmeio)
+					if (!rw)
 						begin
+							mmreq <= mmeio;
+							miorq <= !mmeio;
+							mrd <= rw;
+							mwr <= !rw;
 							msltsl1 <= sltsl;
 							msltsl2 <= !sltsl;
+							mdata <= 8'bZ;
 						end
 					else
-						begin
-							msltsl1 <= 1'b1;
-							msltsl1 <= 1'b1;
-						end
-					if (!mrd)
-						mdata <= 8'bZ;
+						wcnt <= 4;
+					end
 				end
 			1: begin
-					if (!mrd)
+					if (!rw)
 						begin
 							mdata <= 8'bZ;
 							md[7:0] <= mdata[7:0];
 						end
-					else if (!mwr)
+					else 
 						begin
-							md[7:0] <= 8'bZ;
-							mdata[7:0] <= md[7:0];
+						if (wcnt != 0)
+							begin
+								mdata[7:0] = md[15:8];
+								wcnt = wcnt - 1;
+								mmreq = mmeio;
+								miorq = !mmeio;
+								mrd = rw;
+								mwr = !rw;
+								msltsl1 = sltsl;
+								msltsl2 = !sltsl;								
+							end
+						else
+							begin
+								msltsl1 <= 1'b1;
+								msltsl2 <= 1'b1;
+								mrd <= 1'b1;
+								mwr <= 1'b1;
+								mmreq <= 1'b1;
+								miorq <= 1'b1;
+							end
 						end
 				end
 			endcase
 		end
 	else
 		begin
-			if (a0)
-				begin
-					msltsl1 <= 1'b1;
-					msltsl2 <= 1'b1;
-					mrd <= 1'b1;
-					mwr <= 1'b1;
-					mmreq <= 1'b1;
-					miorq <= 1'b1;
-				end
+		if (mode)
+			begin
+				msltsl1 <= 1'b1;
+				msltsl2 <= 1'b1;
+				mrd <= 1'b1;
+				mwr <= 1'b1;
+				mmreq <= 1'b1;
+				miorq <= 1'b1;
+				mdata <= 2'hff;
+			end
 		end
 end
 
@@ -93,7 +113,7 @@ always @ (negedge clk) begin
 	else
 		begin
 		ready <= 0;
-		rcnt <= 1;
+		rcnt <= 7;
 		end
 	if (rcnt == 0)
 		ready <= 1;

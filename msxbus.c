@@ -77,6 +77,9 @@ volatile unsigned *clkReg;
 #define GPIO_PULL *(gpio+37) // Pull up/pull down
 #define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
 
+
+
+
 // MSX slot access macro
 #define MCS_PIN     0 
 #define MA0_PIN     1
@@ -116,8 +119,8 @@ volatile unsigned *clkReg;
 #define MSX_M1      (1<<M1_PIN)
 
 #define SET_ADDR(x) setDataOut(); GPIO_CLR = 0xffff << MD00_PIN; GPIO_SET = (x & 0xffff) << MD00_PIN
-#define GET_DATA(x) x = GET_GPIOS(0xff,MD00_PIN) >> MD00_PIN; 
-#define SET_DATA(x) GPIO_CLR = 0xff << MD00_PIN; GPIO_SET = (x & 0xff) << MD00_PIN
+#define GET_DATA(x) setDataIn(); x = GET_GPIOS(0xff,MD00_PIN) >> MD00_PIN; 
+#define SET_DATA(x) GPIO_CLR = 0xffff << MD00_PIN; GPIO_SET = (x & 0xff) << MD08_PIN
 
 #define MSX_SET_OUTPUT(g) {INP_GPIO(g); OUT_GPIO(g);}
 #define MSX_SET_INPUT(g)  INP_GPIO(g)
@@ -191,7 +194,13 @@ static int termClock(int clock)
       usleep(10);
    }
 }
- 
+/*
+#0001 1122 2333 4445 5566 6777 8889 9900
+                   1 0010 0100 1001 0000
+				   8  4    2   9
+#aaab bbcc cddd eeef ff
+ 1001 0010 0100 1001 00				   
+*/ 
 void inline setDataIn()
 {
 #if 1
@@ -207,7 +216,6 @@ void inline setDataIn()
 	INP_GPIO(MD06_PIN);
 	INP_GPIO(MD07_PIN);
 #endif	
-//	printf("setDataIn: 0x%08x 0x%08x\n", *gpio, *(gpio+1));
 }
 
 void inline setDataOut()
@@ -257,19 +265,18 @@ int msxclose()
  
 int msxread(int slot, unsigned short addr)
  {
-	 unsigned char byte;
+	 unsigned char byte, b1;
+	 int i;
 	 GPIO_CLR = MSX_MA0 | MSX_MODE;
-	 GPIO_SET = MSX_CS | MSX_RESET | MSX_M1 | (slot !=1 ? MSX_SLTSL : 0);
+	 GPIO_SET = MSX_CS | MSX_RESET | MSX_M1 | (slot !=2 ? MSX_SLTSL : 0);
 	 SET_ADDR(addr);
-	 GPIO_CLR = MSX_RW | MSX_MIO | (slot == 1 ? MSX_SLTSL : 0);
+	 GPIO_CLR = MSX_RW | MSX_MIO | (slot == 2 ? MSX_SLTSL : 0);
 	 GPIO_CLR = MSX_CS;
 	 while(!GET_GPIO(MREADY_PIN));
 	 GPIO_SET = MSX_MA0;
 	 setDataIn();
-	 GPIO_CLR = MSX_CS;
-	 //while(!GET_GPIO(MREADY_PIN));
-	 GET_DATA(byte);	 
-//	 setDataOut();
+//	 while(!GET_GPIO(MREADY_PIN));
+	 GET_DATA(byte);
 	 GPIO_SET = MSX_CS | MSX_MODE;
 	 return byte;	 
  }
@@ -278,16 +285,16 @@ int msxread(int slot, unsigned short addr)
  {
 	 int i = 0;
 	 GPIO_CLR = MSX_MA0 | MSX_MODE;
-	 GPIO_SET = MSX_CS | MSX_RESET | MSX_M1 | (slot != 1 ? MSX_SLTSL : 0);
+	 GPIO_SET = MSX_CS | MSX_RESET | MSX_M1 | (slot != 2 ? MSX_SLTSL : 0);
 	 SET_ADDR(addr);
 	 GPIO_SET = MSX_RW;
-	 GPIO_CLR = MSX_MIO | (slot == 1 ? MSX_SLTSL : 0);
+	 GPIO_CLR = MSX_CS | MSX_MIO | (slot == 2 ? MSX_SLTSL : 0);
+	 while(!GET_GPIO(MREADY_PIN));
+	 GPIO_SET = MSX_CS;
+	 SET_DATA(byte);	
+	 GPIO_SET = MSX_MA0;
 	 GPIO_CLR = MSX_CS;
 	 while(!GET_GPIO(MREADY_PIN));
-	 SET_DATA(byte);	 
-	 GPIO_SET = MSX_MA0;
-//	 while(!GET_GPIO(MREADY_PIN));
-	 for(i=0;i<500;i++)
 	 GPIO_SET = MSX_CS | MSX_MODE;
 	 return;
  }
