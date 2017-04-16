@@ -34,8 +34,10 @@ volatile unsigned *gpio;
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
 #define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
  
+#define GPIO_DIR *gpio
 #define GPIO_SET *(gpio+7)  // sets   bits which are 1 ignores bits which are 0
 #define GPIO_CLR *(gpio+10) // clears bits which are 1 ignores bits which are 0
+#define GPIO_GET *(gpio+13)
  
 #define GET_GPIO(g) (*(gpio+13)&(1<<g)) // 0 if LOW, (1<<g) if HIGH
  
@@ -102,7 +104,7 @@ int main(int argc, char **argv)
   {
 	  offset = atoi(argv[2]);
   }
-  for(addr=0; addr < offset; addr++)
+  for(addr=0; addr < size; addr++)
 	  mem[offset+addr] = fgetc(fp);
   // Set up gpi pointer for direct register access
   setup_io();
@@ -121,36 +123,41 @@ int main(int argc, char **argv)
   for (i = 0; i < 16; i++)
 	MSX_SET_INPUT(MSX_D0_PIN+i);
 
+  GPIO_SET = MSX_A0;
   printf("%08x\n", MSX_SLTSL  & 0xb0700040);
+  GPIO_CLR = MSX_A0;
   while(1)
   {
-	  val = (*(gpio+13));
-	  if (pval != val)
+  	  GPIO_DIR = 0;
+	  GPIO_CLR = MSX_A0;
+	  val = GPIO_GET;
+//	  if (pval != val)
 	  {
 		//printf("%08x\n", val);
-		pval = val;
-		addr = val & MSX_ADDR;
+//		pval = val;
 #if 1		
-		  if ((val & (MSX_SLTSL | MSX_MIRQ) & !(addr >= 0x4000 && addr < 0xc000) ) == 0)
+		  if (!(val & (MSX_SLTSL)))
 		  {
-			  if ((val & MSX_RW) == 0)
+			addr = val & MSX_ADDR;
+			  if (!(val & (MSX_RW)))
 			  {
-				*gpio = 0x249249;
 				GPIO_CLR = 0xff;
-				GPIO_SET = MSX_A0 | mem[addr];
-				while(*(gpio+13)&MSX_SLTSL==0);
-				printf("r%04x = %02x\n", addr, mem[addr]);
-				*gpio = 0;
+				GPIO_DIR = 0x249249; // 0010 0100 1001 0010 0100 1001
+				GPIO_SET = mem[addr];
+				GPIO_SET = MSX_A0;
+				printf("%04x:%02x ", addr, mem[addr]);
+				while(GPIO_GET&MSX_SLTSL==0);
 			  }
 			  else
 			  {
 				GPIO_SET = MSX_A0;
-//				printf("w%04x = %02x\n", addr, *(gpio+13) & 0xff);
+				while(GPIO_GET&MSX_SLTSL==0) val = GPIO_GET & 0xff;
+				printf("w%04x = %02x\n", addr, *(gpio+13) & 0xff);
 //				mem[val & MSX_ADDR] = *(gpio+13) & 0xff;
 			  }
 		  }
-		  else
-		  GPIO_CLR = MSX_A0;
+//		  else
+		  GPIO_SET = MSX_A0;
 #endif	  
 	  }
   };
