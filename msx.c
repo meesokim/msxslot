@@ -210,13 +210,12 @@ int main(int argc, char **argv)
 	  while(1)
 	  for(i = 0; i < 16; i++)
 	  {
-		 msxwrite(slot, 0x7000, i);
+		 msxwrite(slot, 0x6000, i);
 #if 1		  
 		 printf("slot%d/page%02d:", slot, i);
 	     for(j = 0; j < 16; j++)
 		 {
-			msxwrite(slot, 0x7000, i);
-			printf("%02x ", msxread(slot, 0x8000+j));
+			printf("%02x ", msxread(slot, 0x6000+j));
 		 }
 		 printf("\n");
 #endif
