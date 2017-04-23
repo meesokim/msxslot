@@ -118,14 +118,14 @@ set_location_assignment PIN_17 -to md[12]
 set_location_assignment PIN_18 -to md[13]
 set_location_assignment PIN_42 -to md[14]
 set_location_assignment PIN_47 -to md[15]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[7]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[6]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[5]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[4]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[3]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[2]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[1]
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to mdata[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[7]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mdata[0]
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to maddr[15]
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to maddr[14]
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to maddr[13]
@@ -143,3 +143,21 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to maddr[2
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to maddr[1]
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to maddr[0]
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mcs1
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to mwait
+set_location_assignment PIN_91 -to mwait
+set_location_assignment PIN_26 -to reset
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[7]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[6]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[5]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[4]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[3]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[2]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[1]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mdata[0]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to miorq
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mmreq
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mm1
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mrd
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to msltsl1
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to msltsl2
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to mwr

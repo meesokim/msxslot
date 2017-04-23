@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 	  for(i = 0; i < 16; i++)
 	  {
 		 msxwrite(slot, 0x6000, i);
-#if 1		  
+#if 1
 		 printf("slot%d/page%02d:", slot, i);
 	     for(j = 0; j < 16; j++)
 		 {
@@ -322,7 +322,7 @@ int main(int argc, char **argv)
 					  printf("%c", byte);
 				  } else {
 					  if (addr % 32 == 0)
-							printf ("\r0x%04x: ", addr);
+							printf ("\n0x%04x: ", addr);
 					  if (c=='*')
 						printf("\e[31m%02x\e[m", byte);
 					  else

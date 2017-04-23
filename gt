@@ -1,0 +1,1 @@
+sudo ~pi/openmsx-0.13.0/derived/openmsx -machine Panasonic_FS-A1GT -ext RPMCSlot

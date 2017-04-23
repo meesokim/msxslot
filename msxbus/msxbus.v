@@ -1,22 +1,24 @@
 `timescale 10ns/1ns
 
-module msxbus (msltsl1, msltsl2, mcs1, mcs2, mcs12, mdata, maddr, mrd, mwr, miorq, mmreq, mreset, mm1, msxclk, 
-					cs, a0, mode, ready, clk, md, 
+module msxbus (msltsl1, msltsl2, mcs1, mcs2, mcs12, mdata, maddr, mrd, mwr, miorq, mmreq, mreset, mm1, msxclk, mwait,
+					cs, a0, mode, ready, clk, md, reset,
 					rw, mmeio, sltsl, mswsrc,
 );
 
 input clk, cs, a0, mode, rw, mmeio, sltsl;
 inout reg [15:0] md;
 output reg ready;
-output reg msltsl1, msltsl2, mrd, mwr, miorq, mmreq, mreset, mm1;
+output reg msltsl1, msltsl2, mrd, mwr, miorq, mmreq, mm1, mreset;
 output wire mcs1, mcs2, mcs12, mswsrc;
 output reg [15:0] maddr;
 inout reg [7:0] mdata;
+input mwait;
+input reset;
 
 output reg msxclk;
 reg [15:0] addr;
 reg [2:0] count;
-reg [2:0] rcnt;
+reg [3:0] rcnt;
 reg [2:0] wcnt;
 
 assign mcs1   = (!msltsl1 | !msltsl2) & maddr[14] & !maddr[15] ? 1'b0 : 1'b1;
@@ -65,7 +67,8 @@ always @ (negedge clk) begin
 						if (wcnt != 0)
 							begin
 								mdata[7:0] = md[15:8];
-								wcnt = wcnt - 1;
+								if (wcnt > 0)
+									wcnt = wcnt - 1;
 								mmreq = mmeio;
 								miorq = !mmeio;
 								mrd = rw;
@@ -73,7 +76,7 @@ always @ (negedge clk) begin
 								msltsl1 = sltsl;
 								msltsl2 = !sltsl;								
 							end
-						else
+						else 
 							begin
 								msltsl1 <= 1'b1;
 								msltsl2 <= 1'b1;
@@ -114,6 +117,10 @@ always @ (negedge clk) begin
 		begin
 		ready <= 0;
 		rcnt <= 7;
+		if (mmeio & rw & a0)
+			rcnt <= 14;
+		if (mmeio & !rw & !a0)
+			rcnt <= 9;
 		end
 	if (rcnt == 0)
 		ready <= 1;

@@ -1,0 +1,4 @@
+ECHO %_CWDS%%M_CMD%
+%M_CMD%
+SET M_CMD=
+M
