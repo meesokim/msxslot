@@ -72,7 +72,7 @@ volatile unsigned *gpio;
 #define MSX_RD          (1<<MSX_RD_PIN)
 #define MSX_BUSDIR      (1<<MSX_BUSDIR)
 #define MSX_INT         (1<<MSX_INT_PIN)
-#define MSX_SLTSL 	    (1<<MSX_SLTSL_PIN)
+#define MSX_SLTSL 	(1<<MSX_SLTSL_PIN)
 #define MSX_CS1         (1<<MSX_CS1_PIN)
 #define MSX_CS12        (1<<MSX_CS12_PIN)
 #define MSX_IORQ        (1<<MSX_IORQ_PIN)
@@ -263,7 +263,7 @@ void setup_io()
     bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);      // The default
     bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                   // The default
     bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_4); 
-    bcm2835_spi_chipSelect(BCM2835_SPI_CS0);                      // The default
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS1);                      // The default
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);      // the default   
 } // setup_io
 
