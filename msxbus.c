@@ -22,6 +22,8 @@
 #include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
+
+#include "barrier.h"
  
 #define PAGE_SIZE (4*1024)
 #define BLOCK_SIZE (4*1024)
@@ -143,11 +145,11 @@ volatile unsigned *gpio1;
 #endif
 
 #ifdef RPMC_V5
-#define GET_DATA(x) x = GPIO >> MD00_PIN;
+#define GET_DATA(x) x = (GPIO >> MD00_PIN) & 0xff;
 #define SET_DATA(x) GPIO_SET = x << MD00_PIN;
 #else
-#define GET_DATA(x) setDataOut(); x = GPIO >> MD00_PIN; GPIO_SET = 0xff << MD00_PIN;
-#define SET_DATA(x) setDataOut(); GPIO_CLR = 0xff << MD00_PIN; GPIO_SET = (x & 0xff) << MD00_PIN;
+#define GET_DATA(x) GPIO_CLR = 0xff << MD00_PIN; x = GPIO >> MD00_PIN; 
+#define SET_DATA(x) GPIO_CLR = 0xff << MD00_PIN; GPIO_SET = (x & 0xff) << MD00_PIN;
 #endif
 #define MSX_SET_OUTPUT(g) {INP_GPIO(g); OUT_GPIO(g);}
 #define MSX_SET_INPUT(g)  INP_GPIO(g)
@@ -203,6 +205,7 @@ void inline setDataOut()
 #else
 	*(gpio1) &= 0x0924927f;
 	*(gpio1) |= 0x09249240;
+	GPIO_SET = 0xff << MD00_PIN;	
 #endif	
 }
 
@@ -410,21 +413,34 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
  int msxread(int slot, unsigned short addr)
  {
 	unsigned char byte;
-	int i;
+	int i, j;
+	struct timespec tv, tr;
 #ifdef RPMC_V5
 	int cs1, cs2, cs12;
 	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1 : 0;
 	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2 : 0;
 	cs12 = (cs1 || cs2) ? MSX_CS12 : 0;	
-	GPIO_CLR = 0xffff << MD00_PIN;
+	GPIO_CLR = (0xffff) << MD00_PIN;
 	GPIO_SET = LE_A | (addr & 0xffff) << MD00_PIN;
+//	asm volatile ("nop;");	
 	GPIO_CLR = LE_A;
-	GPIO_SET = 0xff0000;
+	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_WR;
 	GPIO_CLR = LE_B | (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_RD | cs1 | cs2 | cs12 | 0xff << MD00_PIN;
 	GET_DATA(byte);
+	GET_DATA(byte);
+	GET_DATA(byte);
+	GET_DATA(byte);
+	GET_DATA(byte);
+	GET_DATA(byte);
+	GET_DATA(byte);
+	GET_DATA(byte);
+	//printf("\n");
 	GPIO_SET = LE_B;
 #else	
 	spi_set(addr, 0, 0, slot);
+	GET_DATA(byte);
+	GET_DATA(byte);
+	GET_DATA(byte);
 	GET_DATA(byte);
 	spi_clear();
 #endif
@@ -441,10 +457,26 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 	cs12 = (cs1 || cs2) ? MSX_CS12 : 0;	
 	GPIO_CLR = LE_A | 0xffff << MD00_PIN;
 	GPIO_SET = LE_B | (addr & 0xffff) << MD00_PIN;
+	asm volatile ("nop;");	
 	GPIO_SET = LE_A;
 	GPIO_SET = 0xff00 << MD00_PIN;
-	GPIO_CLR = LE_B | (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR | 0xff << MD00_PIN;
- 	SET_DATA(byte);
+	GPIO_CLR = 0xff << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_RD;
+	GPIO_CLR = LE_B | (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+ 	GPIO_SET = byte << MD00_PIN;
+	GPIO_SET = LE_B;
 #else	
 	tv.tv_sec = 0;
 	tv.tv_nsec = 20;
@@ -540,6 +572,7 @@ void setup_io()
 #ifndef RPMC_V4
 	MSX_SET_OUTPUT(SPI_MOSI_PIN);
 	GPIO_SET = MSX_SLTSL1 | SPI_CS | SPI_SCLK | SPI_MOSI;  
+	setDataOut();
 #else	
 	MSX_SET_OUTPUT(SPI_MOSI0_PIN);
 	MSX_SET_OUTPUT(SPI_MOSI1_PIN);
@@ -589,7 +622,7 @@ void msxclose()
 
 int main(int argc, char **argv)
 {
-  int g,rep,i,addr, page=4, c= 0;
+  int g,rep,i,addr, page=4, c= 0,addr0;
   char byte, byte0, io;
   int offset = 0x4000;
   int size = 0x8000;
@@ -630,8 +663,15 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 	msxwrite(1, 0x6000, 3);
+	offset = 0x4000;
 	for(addr=offset; addr < offset + size; addr ++)
 	{
+#if 0
+		addr0 = 0xffff & (addr + (rand() % 2));//0xffff & (0x4000 + rand());
+		printf("%04x:%02x\n", addr0, 0xff & msxread(1, addr0));
+		addr0 = 0xffff & (addr + (rand() % 2));//0xffff & (0x4000 + rand());
+		printf("%04x:%02x\n", addr0, 0xff & msxread(1, addr0));
+#else		
 	  if (addr > 0xbfff)
 	  {
 		 if (!(addr & 0x1fff)) {
@@ -660,7 +700,7 @@ int main(int argc, char **argv)
 				c = 1;
 		}
 		if (c)  
-			printf("\e[31m%02x\e[m ", byte);
+			printf("\e[31m%02x \e[0m", byte);
 		else
 			printf("%02x ", byte);
 #else
@@ -668,13 +708,14 @@ int main(int argc, char **argv)
 #endif	
 #endif
 	  }
+#endif
 	}
 	printf("\n");
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t2);
 	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000000000.0;      // sec to ns
 	elapsedTime += (t2.tv_nsec - t1.tv_nsec) ;   // us to ns	
 	if (!binary) {
-		printf("elapsed time: %10.2fs, %10.2fns/i ", elapsedTime/100000000, elapsedTime / size);
+		printf("elapsed time: %10.2fs, %10.2fns/i\n", elapsedTime/100000000, elapsedTime / size);
 	}	
   clear_io();
   return 0;
