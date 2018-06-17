@@ -6,12 +6,10 @@
 //  Revised: 15-Feb-2013
 
 #define RPMC_V5
- 
+#include <bcm2835.h>
 // Access from ARM Running Linux
- 
-#define BCM2708_PERI_BASE        0x3F000000 // Raspberry Pi 2
-#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
-  
+#include "rpi-gpio.h"
+   
 #include <stdio.h>
 #include <stdlib.h>  
 #include <fcntl.h>
@@ -54,39 +52,54 @@ volatile unsigned *gpio1;
 #define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
 
 #ifdef RPMC_V5
-#define RD0		7
-#define RD1		8
-#define RD2		9
-#define RD3		10
-#define RD4		11
-#define RD5		12
-#define RD6		13
-#define RD7		14
-#define RA8		15
-#define RA9		16
-#define RA10	17
-#define RA11	18
-#define RA12	19
-#define RA13	20
-#define RA14	21
-#define RA15	22
+#define RD0		0
+#define RD1		1
+#define RD2		2
+#define RD3		3
+#define RD4		4
+#define RD5		5
+#define RD6		6
+#define RD7		7
+#define RA8		8
+#define RA9		9
+#define RA10	10
+#define RA11	11
+#define RA12	12
+#define RA13	13
+#define RA14	14
+#define RA15	15
+#define RC16	16
+#define RC17	17
+#define RC18	18
+#define RC19	19
+#define RC20	20
+#define RC21	21
+#define RC22	22
+#define RC23	23
+#define RC24	24
+#define RC25	25
+#define RC26	26
+#define RC27	27
 
-#define MD00_PIN 7
-#define SLTSL1_PIN RA8
-#define SLTSL3_PIN RA9
-#define CS1_PIN	RA10
-#define CS2_PIN RA11
-#define RD_PIN	RA12
-#define WR_PIN	RA13
+#define MD00_PIN 	0
+#define SLTSL3_PIN	0
+#define SLTSL1_PIN 	RA8
+#define CS12_PIN 	RA9
+#define CS1_PIN		RA10
+#define CS2_PIN 	RA11
+#define RD_PIN		RA12
+#define WR_PIN		RA13
 #define IORQ_PIN	RA14
 #define MREQ_PIN	RA15
-#define CS12_PIN	24
-#define RESET_PIN	23
-#define WAIT_PIN	3
-#define INT_PIN		2
-#define CLK_PIN		4
-#define LE_A_PIN	0
-#define LE_B_PIN	1
+#define LE_A_PIN	RC16
+#define LE_C_PIN	RC17
+#define LE_D_PIN	RC18
+#define RESET_PIN	RC19
+#define CLK_PIN		RC20
+#define INT_PIN		RC24
+#define WAIT_PIN	RC25
+#define BUSDIR_PIN	RC26
+#define SW1_PIN		RC27
 
 #define MSX_SLTSL1 (1 << SLTSL1_PIN)
 #define MSX_SLTSL3 (1 << SLTSL3_PIN)
@@ -101,7 +114,8 @@ volatile unsigned *gpio1;
 #define MSX_WAIT	(1 << WAIT_PIN)
 #define MSX_INT		(1 << INT_PIN)
 #define LE_A	(1 << LE_A_PIN)
-#define LE_B	(1 << LE_B_PIN)
+#define LE_C	(1 << LE_C_PIN)
+#define LE_D	(1 << LE_D_PIN)
 
 #else
 // MSX slot access macro
@@ -213,7 +227,8 @@ void inline spi_clear()
 {
 	int x;
 #ifdef RPMC_V5
-	GPIO_SET = LE_B;
+	GPIO_SET = LE_A | 0xffff;
+	GPIO_CLR = LE_C | LE_D; 
 #else
 #ifdef RPMC_V4
 	 GPIO_SET = SPI_SCLK | SPI_MOSI0 | SPI_MOSI1 | SPI_MOSI2;
@@ -425,7 +440,8 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 //	asm volatile ("nop;");	
 	GPIO_CLR = LE_A;
 	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_WR;
-	GPIO_CLR = LE_B | (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_RD | cs1 | cs2 | cs12 | 0xff << MD00_PIN;
+	GPIO_CLR = (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_RD | cs1 | cs2 | cs12 | 0xff << MD00_PIN;
+	GPIO_CLR = LE_C | LE_D;
 	GET_DATA(byte);
 	GET_DATA(byte);
 	GET_DATA(byte);
@@ -435,7 +451,8 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 	GET_DATA(byte);
 	GET_DATA(byte);
 	//printf("\n");
-	GPIO_SET = LE_B;
+	GPIO_SET = LE_C | LE_D | 0xffff;
+	GPIO_CLR = LE_C | LE_D;
 #else	
 	spi_set(addr, 0, 0, slot);
 	GET_DATA(byte);
@@ -455,28 +472,22 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1 : 0;
 	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2 : 0;
 	cs12 = (cs1 || cs2) ? MSX_CS12 : 0;	
-	GPIO_CLR = LE_A | 0xffff << MD00_PIN;
-	GPIO_SET = LE_B | (addr & 0xffff) << MD00_PIN;
+	GPIO_SET = LE_C | LE_D | 0xffff;
+	GPIO_CLR = LE_C | LE_D;
+	GPIO_CLR = 0xffff;
+	GPIO_SET = LE_A | (addr & 0xffff) << MD00_PIN;
 	asm volatile ("nop;");	
-	GPIO_SET = LE_A;
-	GPIO_SET = 0xff00 << MD00_PIN;
-	GPIO_CLR = 0xff << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
+	GPIO_CLR = LE_A;
 	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_RD;
-	GPIO_CLR = LE_B | (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
- 	GPIO_SET = byte << MD00_PIN;
-	GPIO_SET = LE_B;
+	GPIO_CLR = (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR;
+	GPIO_CLR = LE_C | 0xff;
+	GPIO_SET = byte;
+	GPIO_CLR = LE_D;
+	tv.tv_sec = 0;
+	tv.tv_nsec = 10;
+	nanosleep(&tv, &tr);
+	GPIO_SET = LE_C | LE_D | 0xffff;
+	GPIO_CLR = LE_C | LE_D;
 #else	
 	tv.tv_sec = 0;
 	tv.tv_nsec = 20;
@@ -494,23 +505,41 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 	struct timespec tv, tr;
 	tv.tv_sec = 0;
 	tv.tv_nsec = 10;
-	spi_set(addr, 0, 1, 0);
+	GPIO_SET = LE_C | LE_D | 0xffff;
+	GPIO_CLR = LE_C | LE_D;
+	GPIO_CLR = 0xffff;
+	GPIO_SET = LE_A | (addr & 0xffff) << MD00_PIN;
+	asm volatile ("nop;");	
+	GPIO_CLR = LE_A;
+	GPIO_SET = MSX_MREQ | MSX_WR;
+	GPIO_CLR = MSX_IORQ | MSX_RD;
+	GPIO_CLR = LE_C | 0xff;
 	nanosleep(&tv, &tr);
 	GET_DATA(byte);
-	spi_clear();
+	GPIO_SET = LE_C | LE_D | 0xffff;
+	GPIO_CLR = LE_C | LE_D;
 	return byte;	 
  }
  
  void msxwriteio(unsigned short addr, unsigned char byte)
  {
-	 struct timespec tv, tr;
-	 tv.tv_sec = 0;
-	 tv.tv_nsec = 400;
- 	 SET_DATA(byte);
-	 spi_set(addr, 1, 1, 0);
-	 nanosleep(&tv, &tr);
-	 spi_clear();
- 	 GPIO_SET = 0xff << MD00_PIN;
+	struct timespec tv, tr;
+	tv.tv_sec = 0;
+	tv.tv_nsec = 400;
+	SET_DATA(byte);
+	GPIO_SET = LE_C | LE_D | 0xffff;
+	GPIO_CLR = LE_C | LE_D;
+	GPIO_CLR = 0xffff;
+	GPIO_SET = LE_A | (addr & 0xffff) << MD00_PIN;
+	asm volatile ("nop;");	
+	GPIO_CLR = LE_A;
+	GPIO_CLR = MSX_IORQ | MSX_WR | 0xff;
+	GPIO_SET = MSX_MREQ | MSX_RD | byte;
+	GPIO_CLR = LE_C | LE_D;
+	nanosleep(&tv, &tr);
+	GPIO_SET = LE_C | LE_D | 0xffff;
+	GPIO_CLR = LE_C | LE_D;
+	GPIO_SET = 0xff << MD00_PIN;
 	 return;
  }
  
@@ -530,58 +559,24 @@ int rtapi_open_as_root(const char *filename, int mode) {
 //
 void setup_io()
 {
-   int i ;	
-   /* open /dev/mem */
-   if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
-      printf("can't open /dev/mem \n");
-      exit(-1);
-   }
- 
-   /* mmap GPIO */
-   gpio_map = mmap(
-      NULL,             //Any adddress in our space will do
-      BLOCK_SIZE,       //Map length
-      PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
-      MAP_SHARED,       //Shared with other processes
-      mem_fd,           //File to map
-      GPIO_BASE         //Offset to GPIO peripheral
-   );
- 
-   close(mem_fd); //No need to keep mem_fd open after mmap
- 
-   if (gpio_map == MAP_FAILED) {
-      printf("mmap error %d\n", (int)gpio_map);//errno also set!
-      exit(-1);
-   }
- 
-   // Always use volatile pointer!
-   gpio = (volatile unsigned *)gpio_map;
-   gpio10 = gpio+10;
-   gpio7 = gpio+7;
-   gpio13 = gpio+13;
-   gpio1 = gpio+1;
-#ifdef RPMC_V5 
-	for(i = 0; i < 28; i++)
-		MSX_SET_OUTPUT(i);
-	MSX_SET_INPUT(WAIT_PIN);
-	MSX_SET_INPUT(INT_PIN);
-#else  
-	MSX_SET_OUTPUT(SPI_CS_PIN);
-	MSX_SET_OUTPUT(SLTSL1_PIN);
-	MSX_SET_OUTPUT(SPI_SCLK_PIN);
-#ifndef RPMC_V4
-	MSX_SET_OUTPUT(SPI_MOSI_PIN);
-	GPIO_SET = MSX_SLTSL1 | SPI_CS | SPI_SCLK | SPI_MOSI;  
-	setDataOut();
-#else	
-	MSX_SET_OUTPUT(SPI_MOSI0_PIN);
-	MSX_SET_OUTPUT(SPI_MOSI1_PIN);
-	MSX_SET_OUTPUT(SPI_MOSI2_PIN);
-	GPIO_SET = MSX_SLTSL1 | SPI_CS | SPI_SCLK | SPI_MOSI0 | SPI_MOSI1 | SPI_MOSI2;  
-#endif	
-#endif
-	SET_DATA(0);
+	int i ;	
+	if (!bcm2835_init()) return;
+	gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
+	for(int i=0; i < 28; i++)
+	{
+		bcm2835_gpio_fsel(i, i < 21 ? 1 : 0);    
+	}
+
+	gpio10 = gpio+10;
+	gpio7 = gpio+7;
+	gpio13 = gpio+13;
+	gpio1 = gpio+1;
    
+	GPIO_SET = 0xffff | LE_A | LE_C | LE_D;
+	GPIO_CLR = MSX_RESET  | LE_A | LE_C | LE_D;
+	for(int i=0;i<10000;i++);
+	GPIO_SET = MSX_RESET;
+	
 } // setup_io
 
 #if 0

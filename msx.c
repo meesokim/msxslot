@@ -288,7 +288,7 @@ int main(int argc, char **argv)
 		  {
 			  c = ' ';
 			  if (byte != b) 
-	#if 0
+	#if 1
 			  {
 				  cnt = 10;
 				  while(cnt--)
