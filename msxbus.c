@@ -169,7 +169,7 @@ volatile unsigned *gpio1;
 #define MSX_SET_INPUT(g)  INP_GPIO(g)
 #define MSX_SET_CLOCK(g)  INP_GPIO(g); ALT0_GPIO(g)
 
-void setup_io();
+int setup_io();
 int msxread(int slot, unsigned short addr);
 void msxwrite(int slot, unsigned short addr, unsigned char byte);
 int msxreadio(unsigned short addr);
@@ -436,18 +436,12 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2 : 0;
 	cs12 = (cs1 || cs2) ? MSX_CS12 : 0;	
 	GPIO_CLR = (0xffff) << MD00_PIN;
-	GPIO_SET = LE_A | (addr & 0xffff) << MD00_PIN;
+	GPIO_SET = LE_A | LE_D | LE_C | (addr & 0xffff) << MD00_PIN;
 //	asm volatile ("nop;");	
 	GPIO_CLR = LE_A;
 	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_WR;
-	GPIO_CLR = (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_RD | cs1 | cs2 | cs12 | 0xff << MD00_PIN;
-	GPIO_CLR = LE_C | LE_D;
-	GET_DATA(byte);
-	GET_DATA(byte);
-	GET_DATA(byte);
-	GET_DATA(byte);
-	GET_DATA(byte);
-	GET_DATA(byte);
+	GPIO_CLR = LE_C | LE_D | (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_RD | cs1 | cs2 | cs12 | 0xff << MD00_PIN;
+    GET_DATA(byte);
 	GET_DATA(byte);
 	GET_DATA(byte);
 	//printf("\n");
@@ -472,17 +466,13 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1 : 0;
 	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2 : 0;
 	cs12 = (cs1 || cs2) ? MSX_CS12 : 0;	
-	GPIO_SET = LE_C | LE_D | 0xffff;
-	GPIO_CLR = LE_C | LE_D;
-	GPIO_CLR = 0xffff;
-	GPIO_SET = LE_A | (addr & 0xffff) << MD00_PIN;
-	asm volatile ("nop;");	
+	GPIO_CLR = (0xffff) << MD00_PIN;
+	GPIO_SET = LE_A | LE_D | LE_C | (addr & 0xffff) << MD00_PIN;
+//	asm volatile ("nop;");	
 	GPIO_CLR = LE_A;
-	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_RD;
-	GPIO_CLR = (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR;
-	GPIO_CLR = LE_C | 0xff;
-	GPIO_SET = byte;
-	GPIO_CLR = LE_D;
+	GPIO_CLR = (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR | 0xff;
+	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_RD | byte;
+	GPIO_CLR =  LE_C | LE_D | 0xff;
 	tv.tv_sec = 0;
 	tv.tv_nsec = 10;
 	nanosleep(&tv, &tr);
@@ -557,10 +547,10 @@ int rtapi_open_as_root(const char *filename, int mode) {
 //
 // Set up a memory regions to access GPIO
 //
-void setup_io()
+int setup_io()
 {
 	int i ;	
-	if (!bcm2835_init()) return;
+	if (!bcm2835_init()) return -1;
 	gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
 	for(int i=0; i < 28; i++)
 	{
@@ -602,7 +592,11 @@ void msxinit()
 	const struct sched_param priority = {1};
 	sched_setscheduler(0, SCHED_FIFO, &priority);  
 //	stick_this_thread_to_core(0);
-	setup_io();
+	if (setup_io() == -1)
+    {
+        printf("GPIO init error\n");
+        exit(0);
+    }
 }
 
 void msxclose()
