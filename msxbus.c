@@ -159,7 +159,7 @@ volatile unsigned *gpio1;
 #endif
 
 #ifdef RPMC_V5
-#define GET_DATA(x) x = (GPIO >> MD00_PIN) & 0xff;
+#define GET_DATA(x) x = GPIO & 0xff; //(GPIO >> MD00_PIN) & 0xff;
 #define SET_DATA(x) GPIO_SET = x << MD00_PIN;
 #else
 #define GET_DATA(x) GPIO_CLR = 0xff << MD00_PIN; x = GPIO >> MD00_PIN; 
@@ -432,21 +432,20 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 	struct timespec tv, tr;
 #ifdef RPMC_V5
 	int cs1, cs2, cs12;
-	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1 : 0;
-	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2 : 0;
-	cs12 = (cs1 || cs2) ? MSX_CS12 : 0;	
-	GPIO_CLR = (0xffff) << MD00_PIN;
-	GPIO_SET = LE_A | LE_D | LE_C | (addr & 0xffff) << MD00_PIN;
-//	asm volatile ("nop;");	
-	GPIO_CLR = LE_A;
-	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_WR;
-	GPIO_CLR = LE_C | LE_D | (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_RD | cs1 | cs2 | cs12 | 0xff << MD00_PIN;
-    GET_DATA(byte);
-	GET_DATA(byte);
-	GET_DATA(byte);
+	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1 | MSX_CS12 : 0;
+	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2 | MSX_CS12 : 0;
+    GPIO_CLR = 0xffff;
+    GPIO_SET = LE_A | addr;
+    GPIO_CLR = LE_A;
+    GPIO_SET = LE_C | 0xff00;
+    GPIO_CLR = LE_D | (slot == 1 ? MSX_SLTSL1 : 0) | MSX_MREQ | MSX_RD | cs1 | cs2 | 0xff;
+    byte = GPIO;
+    byte = GPIO;
+    byte = GPIO;
+    byte = GPIO;
 	//printf("\n");
-	GPIO_SET = LE_C | LE_D | 0xffff;
-	GPIO_CLR = LE_C | LE_D;
+	GPIO_SET = LE_D;
+    GPIO_CLR = LE_C;
 #else	
 	spi_set(addr, 0, 0, slot);
 	GET_DATA(byte);
@@ -462,22 +461,19 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
  {
 	struct timespec tv, tr;
 #ifdef RPMC_V5
-	int cs1, cs2, cs12;
-	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1 : 0;
-	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2 : 0;
-	cs12 = (cs1 || cs2) ? MSX_CS12 : 0;	
-	GPIO_CLR = (0xffff) << MD00_PIN;
-	GPIO_SET = LE_A | LE_D | LE_C | (addr & 0xffff) << MD00_PIN;
+	GPIO_CLR = LE_C | LE_D;
+    GPIO_CLR = 0xffff;
+	GPIO_SET = addr;
 //	asm volatile ("nop;");	
 	GPIO_CLR = LE_A;
-	GPIO_CLR = (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR | 0xff;
-	GPIO_SET = (slot == 2 ? MSX_SLTSL1 : slot == 1 ? MSX_SLTSL3 : 0) | MSX_IORQ | MSX_RD | byte;
-	GPIO_CLR =  LE_C | LE_D | 0xff;
+    GPIO_CLR = 0xff;
+    GPIO_SET = LE_C | 0xff00 | byte;
+	GPIO_CLR = (slot == 1 ? MSX_SLTSL1 : slot == 2 ? MSX_SLTSL3 : 0) | MSX_MREQ | MSX_WR;
+	GPIO_CLR = LE_C;
 	tv.tv_sec = 0;
 	tv.tv_nsec = 10;
 	nanosleep(&tv, &tr);
-	GPIO_SET = LE_C | LE_D | 0xffff;
-	GPIO_CLR = LE_C | LE_D;
+	GPIO_SET = LE_A | LE_C | LE_D | 0xffff;
 #else	
 	tv.tv_sec = 0;
 	tv.tv_nsec = 20;
@@ -563,10 +559,10 @@ int setup_io()
 	gpio1 = gpio+1;
    
 	GPIO_SET = 0xffff | LE_A | LE_C | LE_D;
-	GPIO_CLR = MSX_RESET  | LE_A | LE_C | LE_D;
-	for(int i=0;i<10000;i++);
+	GPIO_CLR = MSX_RESET | LE_A ;
+	for(int i=0;i<100000;i++);
 	GPIO_SET = MSX_RESET;
-	
+	return 0;
 } // setup_io
 
 #if 0
