@@ -1,0 +1,43 @@
+*MSX Type : MSX System Version 2.0 (MSX2)
+
+*Model Name : FS-A1
+
+*Manufacturer : Panasonic (Matsushita) (Made in 1986)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Slot No.2)
+
+*ROM : 112KB
+
+ 1)MSX BIOS & BASIC Version 2.0 (Slot No.0 : 0000-7FFF)
+   Filename : fs-a1_basic-bios2.rom
+   Filesize : 0x00008000
+   XOR : 62
+   SUM : 003b62fe
+   CRC32 : 9b3e7b97
+   MD5 : 53bec1c22b30c0a15263e04b91a7814f
+ 2)MSX Extended BASIC Version 2.0 (Slot No.3-1 : 0000-3FFF)
+   Filename : fs-a1_msx2sub.rom
+   Filesize : 0x00004000
+   XOR : b2
+   SUM : 001d587e
+   CRC32 : 43e7a7fc
+   MD5 : 8aabde714a42256bef36ea9b04f6ef59
+ 3)Desk Pac (1) (Slot No.3-2 : 4000-BFFF)
+   Filename : fs-a1_deskpac1.rom
+   Filesize : 0x00008000
+   XOR : 8a
+   SUM : 003ee86a
+   CRC32 : 99c48147
+   MD5 : 25bf422462135029bd6c2ef0a722339e
+ 4)Desk Pac (2) (Slot No.3-3 : 4000-BFFF)
+   Filename : fs-a1_deskpac2.rom
+   Filesize : 0x00008000
+   XOR : ab
+   SUM : 002f542f
+   CRC32 : 7f6f4aa1
+   MD5 : 5f6ec5c3eade9e91c59ebd1bb77bdf81
+
+*RAM : 192KB
+
+ 1)Main : 64KB (Slot No.3-0 : 0000-FFFF)
+ 2)VRAM : 128KB (I/O Address : &H98-&H9F)

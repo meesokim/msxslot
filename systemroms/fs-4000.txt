@@ -1,0 +1,45 @@
+*MSX Type : MSX System Version 1.0 (MSX)
+
+*Model Name : FS-4000
+
+*Manufacturer : National (Matsushita) (Made in 1985)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Slot No.2)
+
+*Internal Printer : 16 dots Kanji Printer (1ea)
+
+*ROM : 224KB
+
+ 1)MSX BIOS & BASIC Version 1.0 (Slot No.0 : 0000-7FFF)
+   Filename : fs-4000_basic-bios1.rom
+   Filesize : 0x00008000
+   XOR : 7d
+   SUM : 003b20c5
+   CRC32 : 071135e0
+   MD5 : f005e55c680ba6e7b19f6d4dc8f73ce5
+ 2)MSX Standard Kanji Driver (Slot No.3-1 : 4000-BFFF)
+   Filename : fs-4000_kanjibasic.rom
+   Filesize : 0x00008000
+   XOR : 1e
+   SUM : 00341c4e
+   CRC32 : ebaa5a1e
+   MD5 : ea67465ff992c11e4b146479e5a16e32
+ 3)MSX Standard Kanji Font (JIS 1st Class, I/O Address : &HD8-&HD9)
+   Filename : fs-4000_kanjifont.rom
+   Filesize : 0x00020000
+   XOR : dd
+   SUM : 0083173b
+   CRC32 : 956dc96d
+   MD5 : 090539674630c1338a90a1df943a93e2
+ 4)MSX Word Processor (Slot No.3-0 : 0000-7FFF)
+   Filename : fs-4000_msxword.rom
+   Filesize : 0x00008000
+   XOR : 70
+   SUM : 0037da7a
+   CRC32 : 950b6c87
+   MD5 : 8b81959ffc63982e32e484fe94b7cec4
+
+*RAM : 80KB
+
+ 1)Main : 64KB (Slot No.3-2 : 0000-FFFF)
+ 2)VRAM : 16KB (I/O Address : &H98-&H9F)

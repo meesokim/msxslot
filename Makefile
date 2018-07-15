@@ -15,5 +15,9 @@ msx.o: msx.c
 $(TARGET): $(OBJS)
 	$(CC) -o $@ -g $(OBJS) $(LDFLAGS)
 
+m: 
+	$(CC) -o msx -D_MAIN -g msxbus.c $(LDFLAGS) 
+
+
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) m

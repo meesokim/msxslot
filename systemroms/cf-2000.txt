@@ -1,0 +1,22 @@
+*MSX Type : MSX System Version 1.0 (MSX)
+
+*Model Name : CF-2000
+
+*Manufacturer : National (Matsushita) (Made in 1983)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Slot No.2)
+
+*ROM : 32KB
+
+ 1)MSX BIOS & BASIC Version 1.0 (Slot No.0 : 0000-7FFF)
+   Filename : cf-2000_basic-bios1.rom
+   Filesize : 0x00008000
+   XOR : 34
+   SUM : 003ade58
+   CRC32 : ee229390
+   MD5 : 9218f6dd89f7ba01e3090d44721b4260
+
+*RAM : 32KB
+
+ 1)Main : 16KB (Slot No.0 : C000-FFFF)
+ 2)VRAM : 16KB (I/O Address : &H98-&H9F)

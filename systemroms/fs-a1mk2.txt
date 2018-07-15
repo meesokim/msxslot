@@ -1,0 +1,50 @@
+*MSX Type : MSX System Version 2.0 (MSX2)
+
+*Model Name : FS-A1MK2
+
+*Manufacturer : Panasonic (Matsushita) (Made in 1987)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Slot No.2)
+
+*ROM : 128KB
+
+ 1)MSX BIOS & BASIC Version 2.0 (Slot No.0 : 0000-7FFF)
+   Filename : fs-a1mk2_basic-bios2.rom
+   Filesize : 0x00008000
+   XOR : 62
+   SUM : 003b62fe
+   CRC32 : 9b3e7b97
+   MD5 : 53bec1c22b30c0a15263e04b91a7814f
+ 2)MSX Extended BASIC Version 2.0 (Slot No.3-1 : 0000-3FFF)
+   Filename : fs-a1mk2_msx2sub.rom
+   Filesize : 0x00004000
+   XOR : b2
+   SUM : 001d587e
+   CRC32 : 43e7a7fc
+   MD5 : 8aabde714a42256bef36ea9b04f6ef59
+ 3)A1 Cockpit (1) (Slot No.3-1 : 4000-BFFF)
+   Filename : fs-a1mk2_cockpit1.rom
+   Filesize : 0x00008000
+   XOR : 7b
+   SUM : 003a440f
+   CRC32 : 0eda3f57
+   MD5 : 999551126f5a9ce5c04dbb2aa5460d04
+ 4)A1 Cockpit (2) (Slot No.3-2 : 4000-7FFF)
+   Filename : fs-a1mk2_cockpit2.rom
+   Filesize : 0x00004000
+   XOR : 90
+   SUM : 003f7ed2
+   CRC32 : 756d7128
+   MD5 : 93edb927dd2a24f8cd02523f6c7351fe
+ 5)A1 Cockpit (3) (Slot No.3-3 : 4000-BFFF)
+   Filename : fs-a1mk2_cockpit3.rom
+   Filesize : 0x00008000
+   XOR : 5f
+   SUM : 00215d77
+   CRC32 : c1945676
+   MD5 : 360470bdf5795bb07274b3deb234d831
+
+*RAM : 192KB
+
+ 1)Main : 64KB (Slot No.3-0 : 0000-FFFF)
+ 2)VRAM : 128KB (I/O Address : &H98-&H9F)

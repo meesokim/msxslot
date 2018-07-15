@@ -1,0 +1,84 @@
+*MSX Type : MSX System Version 3.0 (MSX2+)
+
+*Model Name : FS-A1WX
+
+*Manufacturer : Panasonic (Matsushita) (Made in 1988)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Slot No.2)
+
+*Disk Drive Units : 3.5inch 2DD (1ea)
+
+*ROM : 2416KB
+
+ 1)MSX BIOS & BASIC Version 3.0 (Slot No.0-0 : 0000-7FFF)
+   Filename : fs-a1wx_basic-bios2p.rom
+   Filesize : 0x00008000
+   XOR : e1
+   SUM : 003b984b
+   CRC32 : 19771608
+   MD5 : 847cc025ffae665487940ff2639540e5
+ 2)MSX Extended BASIC Version 3.0 (Slot No.3-1 : 0000-3FFF)
+   Filename : fs-a1wx_msx2psub.rom
+   Filesize : 0x00004000
+   XOR : 94
+   SUM : 001e9a12
+   CRC32 : b8ba44d3
+   MD5 : 7c8243c71d8f143b2531f01afa6a05dc
+ 3)MSX FM Music BIOS & BASIC (Slot No,0-2 : 4000-7FFF)
+   Filename : fs-a1wx_fmbasic.rom
+   Filesize : 0x00004000
+   XOR : 05
+   SUM : 002479a1
+   CRC32 : 5c32eb29
+   MD5 : 0c40e7db1c1fcc2405e4d0cdd215adb4
+ 4)MSX Disk BASIC Version 1.0 (Slot No.3-2 : 4000-7FFF, FDC Type : Toshiba TC8566AF)
+   Filename : fs-a1wx_disk.rom
+   Filesize : 0x00004000
+   XOR : 42
+   SUM : 001ddc92
+   CRC32 : 905daa1b
+   MD5 : 51148ca1138c9f4570617b7ab6daec77
+ 5)MSX Standard Kanji BASIC (Slot No.3-1 : 4000-BFFF)
+   Filename : fs-a1wx_kanjibasic.rom
+   Filesize : 0x00008000
+   XOR : 8a
+   SUM : 00390738
+   CRC32 : a068cba9
+   MD5 : 5353336d9c81946fa17582daccbb5cae
+ 6)MSX Standard Kanji Font (JIS 1st & 2nd Class, I/O Address : &HD8-&HDB)
+   Filename : fs-a1wx_kanjifont.rom
+   Filesize : 0x00040000
+   XOR : 47
+   SUM : 011b298f
+   CRC32 : 1f6406fb
+   MD5 : acf53887c2d2783dc059a9b442c86b90
+ 7)A1 Cockpit/Word Processor/MSX-JE (Slot No.3-3 : 0000-BFFF, Panasonic 08KB MegaROM Mapper, Banks : 000-0FFh)
+   Filename : fs-a1wx_firmware.rom
+   Filesize : 0x00200000
+   XOR : 7e
+   SUM : 14d1ab54
+   CRC32 : 283f3250
+   MD5 : 49f5d35d8d8f44099f2a1e5e1b628f29
+
+*RAM : 208KB
+
+ 1)Main : 64KB (Slot No.3-0 : 0000-FFFF)
+ 2)VRAM : 128KB (I/O Address : &H98-&H9F)
+ 3)SRAM : 16KB (Data Back-Up)
+
+*Disk : 2ea
+
+ 1)FS-A1WX System Disk & Utility (1)
+   Filename : fs-a1wx_disk1.dsk
+   Filesize : 0x000b4000
+   XOR : c1
+   SUM : 030b8c05
+   CRC32 : 18b8f52b
+   MD5 : 0f2d91cc3f8964a266bc0d6cbce7ebeb
+ 2)FS-A1WX System Disk & Utility (2)
+   Filename : fs-a1wx_disk2.dsk
+   Filesize : 0x000b4000
+   XOR : 09
+   SUM : 047806bf
+   CRC32 : f29af67b
+   MD5 : 9cfdd30cd385693a5327f215ab96cabc

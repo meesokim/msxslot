@@ -1,0 +1,52 @@
+*MSX Type : MSX System Version 2.0 (MSX2)
+
+*Model Name : CPC-400S
+
+*Manufacturer : Daewoo (Made in 1987)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Extension Bus Slot No.3)
+
+*Disk Drive Units : 3.5inch 2DD (1ea)
+
+*ROM : 240KB
+
+ 1)MSX BIOS & BASIC Version 2.0 (Slot No.0-0 : 0000-7FFF)
+   Filename : cpc-400s_basic-bios2.rom
+   Filesize : 0x00008000
+   XOR : 19
+   SUM : 003b5cc1
+   CRC32 : 53850907
+   MD5 : 6819a1533502261bfdd52436b8346073
+ 2)MSX Extended BASIC Version 2.0 (Slot No.0-3 : 0000-7FFF)
+   Filename : cpc-400s_msx2sub.rom
+   Filesize : 0x00008000
+   XOR : 6e
+   SUM : 002d350e
+   CRC32 : 2ba104a3
+   MD5 : 30a0b3402a0a13b516af76d39f45a365
+ 3)MSX Disk BASIC Version 1.0 (Slot No.2 : 4000-7FFF, FDC Type : Fujitsu MB8877A)
+   Filename : cpc-400s_disk.rom
+   Filesize : 0x00004000
+   XOR : cc
+   SUM : 001e8092
+   CRC32 : 5fa517df
+   MD5 : 25128f53e854d4be82b6178bdc2afc78
+ 4)MSX Hangul Driver (Slot No.0-1 : 4000-BFFF)
+   Filename : cpc-400s_hangul.rom
+   Filesize : 0x00008000
+   XOR : db
+   SUM : 00493475
+   CRC32 : 975e7a31
+   MD5 : 1bf039533043c2860387720278f285db
+ 5)MSX Hangul Font (I/O Address : &HD8-&HD9)
+   Filename : cpc-400s_hangulfont.rom
+   Filesize : 0x00020000
+   XOR : a7
+   SUM : 006f9a31
+   CRC32 : fa85368c
+   MD5 : 392218c5e7f761066cbf6000ae577060
+
+*RAM : 256KB
+
+ 1)Main : 128KB (Slot No.0-2 : 0000-FFFF)
+ 2)VRAM : 128KB (I/O Address : &H98-&H9F)

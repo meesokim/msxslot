@@ -1,0 +1,91 @@
+*MSX Type : MSX System Version 4.0 (MSXturboR)
+
+*Model Name : FS-A1ST
+
+*Manufacturer : Panasonic (Matsushita) (Made in 1990)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Slot No.2)
+
+*Disk Drive Units : 3.5inch 2DD (1ea)
+
+*ROM : 4528KB
+
+ 1)MSX BIOS & BASIC Version 4.0 (Slot No.0-0 : 0000-7FFF)
+   Filename : fs-a1st_basic-biostr.rom
+   Filesize : 0x00008000
+   XOR : 9a
+   SUM : 003b3314
+   CRC32 : 77b94ae0
+   MD5 : 2b0ccbf1c380b56f8a11eb8931116d6b
+ 2)MSX Extended BASIC Version 4.0 (Slot No.3-1 : 0000-3FFF)
+   Filename : fs-a1st_msxtrsub.rom
+   Filesize : 0x00004000
+   XOR : 73
+   SUM : 001e4edb
+   CRC32 : 2c2c77a4
+   MD5 : be78c9e80c250297638b203f512c2327
+ 3)MSX FM Music BIOS & BASIC (Slot No,0-2 : 4000-7FFF)
+   Filename : fs-a1st_fmbasic.rom
+   Filesize : 0x00004000
+   XOR : 08
+   SUM : 001f2278
+   CRC32 : fd7dec41
+   MD5 : 1a7cc841edb74021dee4a7365d92adcf
+ 4)MSX Opening ROM (Slot No.0-3 : 4000-7FFF)
+   Filename : fs-a1st_msxtropt.rom
+   Filesize : 0x00004000
+   XOR : c7
+   SUM : 0021a841
+   CRC32 : c6a4a2a1
+   MD5 : 259eb7b1a858a37f44916b26d5fbd902
+ 5)MSX Disk BASIC Version 1.0/2.01 & MSX-DOS Kernel 2.30 (Slot No.3-2 : 4000-7FFF, MSX-DOS 2.3X 16KB MegaROM Mapper, Banks : 000-003h, FDC Type : Toshiba TC8566AF)
+   Filename : fs-a1st_msxdos23.rom
+   Filesize : 0x00010000
+   XOR : 56
+   SUM : 0074221c
+   CRC32 : 76b2daa8
+   MD5 : 4d161b185605d446aec60ab25d149f05
+ 6)MSX Standard Kanji BASIC (Slot No.3-1 : 4000-BFFF)
+   Filename : fs-a1st_kanjibasic.rom
+   Filesize : 0x00008000
+   XOR : a7
+   SUM : 003ce1ab
+   CRC32 : eaf0d125
+   MD5 : 6d1d2cd5c44cd0d428c6b30b5f92367a
+ 7)MSX Standard Kanji Font (JIS 1st & 2nd Class, I/O Address : &HD8-&HDB)
+   Filename : fs-a1st_kanjifont.rom
+   Filesize : 0x00040000
+   XOR : 47
+   SUM : 011b298f
+   CRC32 : 1f6406fb
+   MD5 : acf53887c2d2783dc059a9b442c86b90
+ 8)A1 Cockpit/Word Processor/MSX-JE (Slot No.3-3 : 0000-FFFF, Panasonic 08KB MegaROM Mapper, Banks : 000-1FFh)
+   Filename : fs-a1st_firmware.rom
+   Filesize : 0x00400000
+   XOR : c5
+   SUM : 34ade783
+   CRC32 : 139ac99c
+   MD5 : dcf6f64dee38e3c2996678deabf0b0fc
+
+*RAM : 400KB
+
+ 1)Main : 256KB (Slot No.3-0 : 0000-FFFF, Memory Mapper)
+ 2)VRAM : 128KB (I/O Address : &H98-&H9F)
+ 3)SRAM : 16KB (Data Back-Up)
+
+*Disk : 2ea
+
+ 1)FS-A1ST System Disk & Utility (1)
+   Filename : fs-a1st_disk1.dsk
+   Filesize : 0x000b4000
+   XOR : 13
+   SUM : 030e5115
+   CRC32 : 3adac3ad
+   MD5 : 0e49e1f0e93fc8a9aa2e662d73152c74
+ 2)FS-A1ST System Disk & Utility (2)
+   Filename : fs-a1st_disk2.dsk
+   Filesize : 0x000b4000
+   XOR : 24
+   SUM : 047ef852
+   CRC32 : 70bb0924
+   MD5 : 3b8f1c486570e3fff78681b56acb317c

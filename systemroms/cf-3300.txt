@@ -1,0 +1,41 @@
+*MSX Type : MSX System Version 1.0 (MSX)
+
+*Model Name : CF-3300
+
+*Manufacturer : National (Matsushita) (Made in 1985)
+
+*Cartridge Slot : 2 Slots (Slot No.1 & Slot No.2)
+
+*Disk Drive Units : 3.5inch 1DD (1ea)
+
+*ROM : 48KB
+
+ 1)MSX BIOS & BASIC Version 1.0 (Slot No.0 : 0000-7FFF)
+   Filename : cf-3300_basic-bios1.rom
+   Filesize : 0x00008000
+   XOR : 6c
+   SUM : 003b20d6
+   CRC32 : 5ad03407
+   MD5 : f873f1260b14f1468fa118778ae1c3d2
+ 2)MSX Disk BASIC Version 1.0 (Slot No.3-1 : 4000-7FFF, FDC Type : Fujitsu MB8877A)
+   Filename : cf-3300_disk.rom
+   Filesize : 0x00004000
+   XOR : 82
+   SUM : 001e3902
+   CRC32 : 549f1d90
+   MD5 : 318b6aa76da71c54ccad7734356e1902
+
+*RAM : 80KB
+
+ 1)Main : 64KB (Slot No.3-0 : 0000-FFFF)
+ 2)VRAM : 16KB (I/O Address : &H98-&H9F)
+
+*Disk : 1ea
+
+ 1)CF-3300 System Disk & Utility
+   Filename : cf-3000_disk.dsk
+   Filesize : 0x0005a000
+   XOR : 0a
+   SUM : 0187a638
+   CRC32 : 7aee6273
+   MD5 : 5ccae8de83670437fee9ac0e7323d0a9
