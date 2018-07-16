@@ -1,0 +1,20 @@
+#!/bin/bash
+i=0
+grep -i ROM ~/blueberryMSX/Machines/*/config.ini > temp
+while IFS=':' read -r -a line || [[ -n "$line" ]]; do
+	IFS='\"' read -r -a split <<< ${line[1]}
+#	echo ${split[1]}
+	file=$(basename "${split[1]}")
+	dir=$(dirname "${split[1]}")
+	filebody="${file%.*}"
+#	echo "${file,,}"
+	ext="${file##*.}"
+	a=`find systemroms -iname ${file}`
+	#find systemroms -iname $file
+	if [ -z $a ]; then
+		echo file not found:$file
+	else
+		#echo copied:$file
+		cp $a "../blueberryMSX/${split[1]}"
+	fi
+done < temp
