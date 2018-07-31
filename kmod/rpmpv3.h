@@ -1,7 +1,7 @@
 #ifndef RPMP
 
 #define RPMP
-#define RPMPV3
+#define RPMPV8
 
 #define RA08	(1 << 8)
 #define RA09	(1 << 9)
@@ -29,12 +29,13 @@
 #define SNDOUT  RC18
 #define IORQ    RC19
 #define RD      RC20
-#define ATN     RC21
-#define RATN    RC22
+#define DAT_EN  RC21
+#define HIADDR  RC22
 #define INT     RC23
 #define WAIT    RC24
 #define DAT_DIR RC25
 #define MREQ    RC26
+#define WR      RC27
 
 volatile unsigned int* gpio;
 

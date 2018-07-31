@@ -77,27 +77,29 @@ int pix_thread(void *data){
 	sched_setscheduler(TSK, SCHED_FIFO, &PARAM);
 	gpio = (unsigned int *)ioremap(GPIO_BASE, GPIO_GPPUDCLK1*4);
 	gpio[GPIO_GPFSEL0] = 0x249249;
-	gpio[GPIO_GPFSEL1] = 0;
+	gpio[GPIO_GPFSEL1] = 0x249249;
 	gpio[GPIO_GPFSEL2] = 0x9240;
 #if 1
 
 	GPIO_CLR(0xffffffff);
-	GPIO_SET(RC24 | RC23);
+	GPIO_SET(INT | WAIT | HIADDR);
 
 	while(1) 
 	{
         signal = gpio[GPIO_GPLEV0];
-        if ((signal & (ATN)) && (signal & RESET))
+        if ((signal & RESET))
         {
-            addr = signal & 0xffff;
+			GPIO_SET(HIADDR);
+            addr = signal & 0xff00;
+			GPIO_CLR(HIADDR | 0xff);
+			addr |= ((signal >> 8) & 0xff);
             if (!(signal & (RD | SLTSL)))
             {
                 addr = addr - 0x4000;
                 if (addr >= 0 && addr < sizeof(ROM))
                 {
-                    GPIO_SET(RATN | DAT_DIR | ROM[addr]);
+                    GPIO_SET(ROM[addr]);
                     while(!(gpio[GPIO_GPLEV0] & RD));
-                    GPIO_CLR(RATN | DAT_DIR | 0xff);
                     continue;
                 }
             }
@@ -105,18 +107,18 @@ int pix_thread(void *data){
             {
                 if (addr == 0xc000)
                 {
-                    GPIO_SET(RATN | DAT_DIR | a++);                    
+					GPIO_SET(DAT_EN);
+                    GPIO_SET(a++);                    
                     while(!(gpio[GPIO_GPLEV0] & RD));
-                    GPIO_CLR(RATN | DAT_DIR | 0xff);
+					GPIO_CLR(DAT_EN);
                     continue;
                 }
                 if (addr == 0xc001)
                 {
-                    GPIO_SET(RATN);
-                    GPIO_SET(RATN);
-                    GPIO_SET(RATN);
+                    GPIO_SET(0);
+                    GPIO_SET(0);
+                    GPIO_SET(0);
                     byte =  gpio[GPIO_GPLEV0];
-                    GPIO_CLR(RATN | DAT_DIR);
 //                    printf("%04x(%02x),%c%c%c%c%c\n", (signal & IORQ) ? signal & 0xffff : signal & 0xff, byte, (signal & ATN) ? '!' : 'x', (signal & IORQ) > 0 ? 'M' : 'I', (signal & SLTSL) > 0 ? 'A' : 'S', (signal & RD) > 0 ? 'W':'R', (signal & RESET) > 0 ? 'R' : 'r');            }
                 }
             }
@@ -124,9 +126,8 @@ int pix_thread(void *data){
             {
                 if ((signal & 0xff) == 100)
                 {
-                    GPIO_SET(RATN | DAT_DIR | a++);                    
+                    GPIO_SET(a++);                    
                     while(!(gpio[GPIO_GPLEV0] & IORQ));
-                    GPIO_CLR(RATN | DAT_DIR | 0xff);
                 }
                 continue;
             }  
@@ -144,7 +145,11 @@ int pix_thread(void *data){
 
 void pix_thread_init(void){
 	printk(KERN_INFO "PIX: starting thread...");
-	task = kthread_run(pix_thread, NULL, THREAD_NAME);
+	task = kthread_create(pix_thread, NULL, THREAD_NAME);
+	if (task)
+	{
+		wake_up_process(task);
+	}
 	printk(KERN_INFO "PIX: starting thread done.");
 }
 
