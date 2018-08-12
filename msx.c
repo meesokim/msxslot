@@ -19,7 +19,7 @@ int main(int argc, char **argv)
   int offset = 0x4000;
   int size = 0x8000;
   int pagetest = 0;
-  int iotest = 0, fdctest = 0;
+  int iotest = 0, fdctest = 0, fmpactest = 0;
   int slot = 1;
   int b;
   int cnt, test = 0;
@@ -51,11 +51,12 @@ int main(int argc, char **argv)
 		  {"0",       no_argument,       0, '0'},
 		  {"compare", required_argument, 0, 'c'},
 		  {"out", 	  required_argument, 0, 'o'},
+		  {"fmpac",   no_argument,       0, 'm'},
 		  {0, 0, 0, 0}
 		};  
     while (1)
 	{
-      c = getopt_long (argc, argv, "vbitfp10c:o:",
+      c = getopt_long (argc, argv, "vbitfp10c:o:m",
                        long_options, &option_index);
       if (c == -1)
         break;
@@ -91,6 +92,9 @@ int main(int argc, char **argv)
 				break;
 			case 'p':
 				pagetest = 1;
+				break;
+			case 'm':
+				fmpactest = 1;
 				break;
 			case 'c':
 //				printf("compare %s\n", optarg);
@@ -160,8 +164,8 @@ int main(int argc, char **argv)
 				  byte = msxread(slot, addr);
 				  if (byte != (b = msxread(slot, addr)))
 				  {
-					  cnt = 2;
-					  byte = b;
+					  printf ("\ndata read error: %02x <> %02x\n", byte, b);
+					  exit(0);
 				  }				  
 				  
 			  }
@@ -248,6 +252,30 @@ int main(int argc, char **argv)
 		  }
 	  };
 	  
+  }
+  if (fmpactest) 
+  {
+	  for(int i = 0; i < 4; i++)
+	  {
+		  msxwrite(slot, 0x3ff7, i);
+		  for(addr=0;addr < 0x4000; addr++)
+		  {
+			  c = ' ';
+			  cnt = 10;
+			  while(cnt--)
+			  {
+				  byte = msxread(slot, addr);
+				  if (byte != (b = msxread(slot, addr)))
+				  {
+					  printf ("\ndata read error: %02x <> %02x\n", byte, b);
+					  exit(0);
+				  }
+			  }
+			  if (addr % 16 == 0)
+					printf ("\n0x%04x: ", addr+i*0x4000);
+			  printf("%02x%c", byte, c);
+		  }
+	  }	
   }
   msxwriteio(0xffff, 0);
   restart:
