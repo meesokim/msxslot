@@ -11,13 +11,15 @@ struct MISS {
 
 static int verbose_flag;
 static int binary;
-
+static unsigned char ROM[] = {
+#include "Antarctic.data"	
+};
 int main(int argc, char **argv)
 {
   int g,rep,i,j,addr, page=4;
   char byte;
   int offset = 0x4000;
-  int size = 0x8000;
+  int size = 0x4000;
   int pagetest = 0;
   int iotest = 0, fdctest = 0, fmpactest = 0;
   int slot = 1;
@@ -46,7 +48,7 @@ int main(int argc, char **argv)
 		  {"io",      no_argument,       0, 'i'},
 		  {"test",    no_argument,       0, 't'},
 		  {"fdc",     no_argument,       0, 'f'},
-		  {"page",    no_argument,       0, 'p'},
+		  {"page",    required_argument, 0, 'p'},
 		  {"1",       no_argument,       0, '1'},
 		  {"0",       no_argument,       0, '0'},
 		  {"compare", required_argument, 0, 'c'},
@@ -56,7 +58,7 @@ int main(int argc, char **argv)
 		};  
     while (1)
 	{
-      c = getopt_long (argc, argv, "vbitfp10c:o:m",
+      c = getopt_long (argc, argv, "vbitfp:10c:o:mI",
                        long_options, &option_index);
       if (c == -1)
         break;
@@ -73,6 +75,15 @@ int main(int argc, char **argv)
 			case 'i':
 				iotest = 1;
 				printf("iotest enabled\n");
+				break;
+			case 'I':
+				msxinit();	
+				for(int i = 0; i < 10; i++)
+				{
+					msxwriteio(0xd4, 0xd4);
+					printf("I/O address: 0xd440 ==> 0x%02x\n", msxreadio(0x40d4));
+				}
+				exit(0);
 				break;
 			case 't':
 				test = 1;
@@ -91,7 +102,10 @@ int main(int argc, char **argv)
 				printf("slot = 1\n");
 				break;
 			case 'p':
-				pagetest = 1;
+				if (optarg)
+					pagetest = atoi(optarg);
+				else
+					pagetest = 1;
 				break;
 			case 'm':
 				fmpactest = 1;
@@ -119,37 +133,6 @@ int main(int argc, char **argv)
 		}	
 		
 	}
-#if 0	
-  if (argc > 1)
-  {
-	  if (argv[1][0] == '2')
-		  slot = 2;
-	  else if (argv[1][0] == '1')
-		  slot = 1;
-	  else if (argv[1][0] == 'i')
-		iotest = 1;
-	  else if (argv[1][0] == 't')
-		test = 1;
-	  else if (argv[1][0] == 'f')
-		fdctest = 1;
-	  else if (argv[1][0] == 'b')
-		binary = 1;
-	  else if (argv[1][0] != 'p')
-		fp = fopen(argv[1], "wb");
-	  else
-		pagetest = 1;
-  }
-  if (argc > 2)
-  {
-	  offset = atoi(argv[2]);
-	  if (offset == 0)
-		  offset = strtol(argv[2], NULL, 16);
-  }
-  if (argc > 3)
-  {
-	  size = atoi(argv[3]);
-  }
-#endif  
   msxinit();
   if (test)
   {
@@ -159,15 +142,11 @@ int main(int argc, char **argv)
 		  {
 			  c = ' ';
 			  cnt = 10;
+			  byte = msxread(slot, addr);
 			  while(cnt--)
 			  {
-				  byte = msxread(slot, addr);
-				  if (byte != (b = msxread(slot, addr)))
-				  {
-					  printf ("\ndata read error: %02x <> %02x\n", byte, b);
-					  exit(0);
-				  }				  
-				  
+				  if (byte != msxread(slot, addr))
+					c = '*';
 			  }
 			  if (addr % 16 == 0)
 					printf ("\n0x%04x: ", addr);
@@ -206,23 +185,39 @@ int main(int argc, char **argv)
 	  printf("\n");
 	  exit(0);
   }
-  if (pagetest)
+#define KONAMI
+  if (pagetest > 0)
   {
-	
-	  pagetest:
 	  slot = 1;
 	  while(1)
-	  for(i = 0; i < 16; i++)
 	  {
-		 msxwrite(slot, 0x6000, i);
-#if 1
-		 printf("slot%d/page%02d:", slot, i);
-	     for(j = 0; j < 16; j++)
-		 {
-			printf("%02x ", msxread(slot, 0x6000+j));
-		 }
-		 printf("\n");
-#endif
+		  printf("\033[0;0H");
+		  for(i = 0; i < 16; i++)
+		  {
+			if (pagetest > 1)
+			msxwrite(slot, 0x6000, i);
+			else 
+			{				
+			msxwrite(slot, 0x7fff, i);
+			for(int i=0; i < 10000; i++);
+			msxwrite(slot, 0x5000, 0);
+			for(int i=0; i < 10000; i++);
+			msxwrite(slot, 0x7000, 1);
+			msxwrite(slot, 0x9000, 2);
+			msxwrite(slot, 0xb000, 3);
+			msxwrite(slot, 0x7ffe, 1);
+			}
+			for(int i=0; i < 1000000; i++);
+			 printf("slot%d/page%02d:", slot, i);
+			 for(j = 0; j < 16; j++)
+			 {
+				if (pagetest > 1)
+				printf("%02x ", msxread(slot, 0x6000+j));
+				else				
+				printf("%02x ", msxread(slot, 0x4000+j));
+			 }
+			 printf("\n");
+		  }
 	  }
 //	 goto pagetest;
 	  exit(0);
