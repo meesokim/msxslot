@@ -437,12 +437,13 @@ void inline spi_set(int addr, int rd, int mreq, int slt1)
 
 void SetAddress(unsigned short addr)
 {
-    GPIO_CLR = 0xffff;
+	GPIO_CLR = 0xffff;
 	GPIO_SET = LE_A | addr;
 	GPIO_SET = LE_A;
     GPIO_CLR = LE_A;
-	GPIO_SET = MSX_CTRL_FLAG;
-	GPIO_CLR = LE_D | 0xff;
+	GPIO_SET = LE_C | MSX_CTRL_FLAG;
+    GPIO_SET = LE_C;
+    GPIO_CLR = LE_C | LE_D | 0xff;
 }	
 
 void SetDelay(int j)
@@ -453,14 +454,16 @@ void SetDelay(int j)
 
 void SetData(int flag, int delay, unsigned char byte)
 {
-	GPIO_SET = LE_C | byte;
-	GPIO_CLR = flag;
-	SetDelay(delay);
-	GPIO_CLR = flag;
-	GPIO_SET = LE_D | MSX_CTRL_FLAG | MSX_CLK;
-	GPIO_CLR = 0;
-   	GPIO_CLR = LE_C | MSX_CLK;
-   	GPIO_SET = MSX_CLK;
+//	SetDelay(delay);
+	GPIO_CLR = flag | LE_D;
+	GPIO_SET = byte;
+	for (int i = 0; i < 5; i++)
+	{
+		GPIO_CLR = LE_D | flag;
+		GPIO_SET = LE_C | byte;
+	}
+	GPIO_SET = LE_D | flag;   	
+	GPIO_CLR = LE_C;
 }
 
 unsigned char GetData(int flag, int delay)

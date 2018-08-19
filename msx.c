@@ -189,25 +189,24 @@ int main(int argc, char **argv)
   if (pagetest > 0)
   {
 	  slot = 1;
+	  int page = pagetest > 1 ?  16: 32;
 	  while(1)
 	  {
 		  printf("\033[0;0H");
-		  for(i = 0; i < 16; i++)
+		  for(i = 0; i < page; i++)
 		  {
 			if (pagetest > 1)
 			msxwrite(slot, 0x6000, i);
 			else 
 			{				
 			msxwrite(slot, 0x7fff, i);
-			for(int i=0; i < 10000; i++);
 			msxwrite(slot, 0x5000, 0);
-			for(int i=0; i < 10000; i++);
 			msxwrite(slot, 0x7000, 1);
 			msxwrite(slot, 0x9000, 2);
 			msxwrite(slot, 0xb000, 3);
 			msxwrite(slot, 0x7ffe, 1);
 			}
-			for(int i=0; i < 1000000; i++);
+//			for(int i=0; i < 1000000; i++);
 			 printf("slot%d/page%02d:", slot, i);
 			 for(j = 0; j < 16; j++)
 			 {
