@@ -87,9 +87,9 @@ volatile unsigned *gclk_base;
 #define RC27	27
 
 #define MD00_PIN 	0
-#define SLTSL3_PIN	0
+#define SLTSL3_PIN	RA9
 #define SLTSL1_PIN 	RA8
-#define CS12_PIN 	RA9
+//#define CS12_PIN 	RA9
 #define CS1_PIN		RA10
 #define CS2_PIN 	RA11
 #define RD_PIN		RA12
@@ -110,7 +110,7 @@ volatile unsigned *gclk_base;
 #define MSX_SLTSL3 (1 << SLTSL3_PIN)
 #define MSX_CS1	(1 << CS1_PIN)
 #define MSX_CS2 (1 << CS2_PIN)
-#define MSX_CS12 (1 << CS12_PIN)
+//#define MSX_CS12 (1 << CS12_PIN)
 #define MSX_RD	(1 << RD_PIN)
 #define MSX_WR  (1 << WR_PIN)
 #define MSX_IORQ  (1 << IORQ_PIN)
@@ -122,8 +122,10 @@ volatile unsigned *gclk_base;
 #define LE_C	(1 << LE_C_PIN)
 #define LE_D	(1 << LE_D_PIN)
 #define MSX_CLK (1 << CLK_PIN)
+#define SW1 	(1 << SW1_PIN)
+#define DAT_DIR (1 << RC21)
 
-#define MSX_CTRL_FLAG (MSX_SLTSL1 | MSX_SLTSL3 | MSX_CS1 | MSX_CS2 | MSX_CS12 | MSX_RD | MSX_WR | MSX_IORQ | MSX_MREQ)
+#define MSX_CTRL_FLAG (MSX_SLTSL1 | MSX_SLTSL3 | MSX_CS1 | MSX_CS2 | MSX_RD | MSX_WR | MSX_IORQ | MSX_MREQ | DAT_DIR)
 
 #else
 // MSX slot access macro
@@ -443,7 +445,7 @@ void SetAddress(unsigned short addr)
     GPIO_CLR = LE_A;
 	GPIO_SET = LE_C | MSX_CTRL_FLAG;
     GPIO_SET = LE_C;
-    GPIO_CLR = LE_C | LE_D | 0xff;
+    GPIO_CLR = LE_C | LE_D;
 }	
 
 void SetDelay(int j)
@@ -454,22 +456,27 @@ void SetDelay(int j)
 
 void SetData(int flag, int delay, unsigned char byte)
 {
-//	SetDelay(delay);
-	GPIO_CLR = flag | LE_D;
-	GPIO_SET = byte;
-	for (int i = 0; i < 5; i++)
+	GPIO_CLR = flag | LE_D | DAT_DIR | 0xff;
+	GPIO_SET = MSX_WR;
+	GPIO_SET = LE_C | byte;
+	for(int i=0; i < 5; i++)
+		GPIO_SET = 0;
+	GPIO_CLR = MSX_WR;
+	for(int i=0; i < delay; i++)
 	{
-		GPIO_CLR = LE_D | flag;
 		GPIO_SET = LE_C | byte;
 	}
-	GPIO_SET = LE_D | flag;   	
+	GPIO_SET = MSX_WR;
+	byte = GPIO;
+	byte = GPIO;
+	GPIO_SET = LE_D | MSX_CTRL_FLAG | DAT_DIR;   	
 	GPIO_CLR = LE_C;
-}
+}   
 
 unsigned char GetData(int flag, int delay)
 {
 	unsigned char byte;
-	GPIO_SET = LE_C;
+	GPIO_SET = LE_C | DAT_DIR;
 	GPIO_CLR = MSX_CLK | flag;
 	SetDelay(delay);
 	byte = GPIO;
@@ -487,10 +494,12 @@ unsigned char GetData(int flag, int delay)
 	int cs1, cs2, cs12;
 	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1: 0;
 	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2: 0;
-	cs12 = (cs1 | cs2 ? MSX_CS12 : 0);
+	//cs12 = (cs1 | cs2 ? MSX_CS12 : 0);
+	if (GPIO & SW1)
+		return 0xff;
 	pthread_mutex_lock(&mutex);
 	SetAddress(addr);
-	byte = GetData((slot == 1 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ | MSX_RD | cs1 | cs2 | cs12, 20);
+	byte = GetData((slot == 1 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ | MSX_RD | cs1 | cs2 /*| cs12 */, 25);
 	pthread_mutex_unlock(&mutex);	
 	return byte;	 
  }
@@ -499,7 +508,7 @@ unsigned char GetData(int flag, int delay)
  {
 	pthread_mutex_lock(&mutex);
 	SetAddress(addr);
-	SetData((slot == 1 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ | MSX_WR, 35, byte);
+	SetData((slot == 1 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ, 35, byte);
 	pthread_mutex_unlock(&mutex);	
 	return;
  }
@@ -509,7 +518,7 @@ unsigned char GetData(int flag, int delay)
 	unsigned char byte;
 	pthread_mutex_lock(&mutex);
 	SetAddress(addr);
-	byte = GetData(MSX_IORQ | MSX_RD, 30);
+	byte = GetData(MSX_IORQ | MSX_RD, 35);
 	pthread_mutex_unlock(&mutex);	
 	return byte;	 
  }
@@ -518,7 +527,7 @@ unsigned char GetData(int flag, int delay)
    {
 	pthread_mutex_lock(&mutex);
 	SetAddress(addr);
-	SetData(MSX_IORQ | MSX_WR, 40, byte);
+	SetData(MSX_IORQ, 45, byte);
 	pthread_mutex_unlock(&mutex);		
 	return;
  }
@@ -542,9 +551,10 @@ int setup_io()
 	int i, speed_id, divisor ;	
 	if (!bcm2835_init()) return -1;
 	gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
-	for(int i=0; i < 28; i++)
+	for(int i=0; i < 27; i++)
 	{
 		bcm2835_gpio_fsel(i, 1);    
+		bcm2835_gpio_set_pud(i, BCM2835_GPIO_PUD_UP);
 	}
 
 	gpio10 = gpio+10;
@@ -574,11 +584,16 @@ int setup_io()
 	else
 		printf("clock disabled\n");
 	
+	bcm2835_gpio_pud(BCM2835_GPIO_PUD_UP);
+	for(int i = 0; i < 8; i++)
+		bcm2835_gpio_pudclk(i, 1);
+	bcm2835_gpio_pudclk(27,1);
+	
 //	GPIO_SET = LE_C | MSX_IORQ | MSX_RD | MSX_WR | MSX_MREQ | MSX_CS1 | MSX_CS2 | MSX_CS12 | MSX_SLTSL1 | MSX_SLTSL3;
 //	GPIO_SET = LE_A | LE_D;
 	GPIO_CLR = 0xffff;
 	GPIO_CLR = MSX_RESET;
-	for(int i=0;i<1000000;i++);
+	for(int i=0;i<2000000;i++);
 	GPIO_SET = MSX_RESET;
 	for(int i=0;i<1000000;i++);
 	return 0;

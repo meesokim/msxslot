@@ -19,7 +19,7 @@ int main(int argc, char **argv)
   int g,rep,i,j,addr, page=4;
   char byte;
   int offset = 0x4000;
-  int size = 0x4000;
+  int size = 0x8000;
   int pagetest = 0;
   int iotest = 0, fdctest = 0, fmpactest = 0;
   int slot = 1;
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
   if (pagetest > 0)
   {
 	  slot = 1;
-	  int page = pagetest > 1 ?  16: 32;
+	  int page = pagetest > 1 ?  16: 24;
 	  while(1)
 	  {
 		  printf("\033[0;0H");
@@ -199,6 +199,7 @@ int main(int argc, char **argv)
 			msxwrite(slot, 0x6000, i);
 			else 
 			{				
+			msxwrite(slot, 0x7fff, i);
 			msxwrite(slot, 0x7fff, i);
 			msxwrite(slot, 0x5000, 0);
 			msxwrite(slot, 0x7000, 1);
