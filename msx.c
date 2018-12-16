@@ -22,7 +22,7 @@ int main(int argc, char **argv)
   int size = 0x8000;
   int pagetest = 0;
   int iotest = 0, fdctest = 0, fmpactest = 0;
-  int slot = 1;
+  int slot = 0;
   int b;
   int cnt, test = 0;
   int port, hi, lo;
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 				printf("slot = 2\n");
 				break;
 			case '0':
-				slot = 1;
+				slot = 0;
 				printf("slot = 1\n");
 				break;
 			case 'p':
