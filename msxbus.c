@@ -1,9 +1,28 @@
-//
-//  How to access GPIO registers from C-code on the Raspberry-Pi
-//  Example program
-//  15-January-2012
-//  Dom and Gert
-//  Revised: 15-Feb-2013
+/*****************************************************************************
+**
+** Msx Slot Access Code for Raspberry Pi 
+** https://github.com/meesokim/msxslot
+**
+** RPMC(Raspberry Pi MSX Clone) core module
+**
+** Copyright (C) 2016 Miso Kim meeso.kim@gmail.com
+**
+** This program is free software; you can redistribute it and/or modify
+** it under the terms of the GNU General Public License as published by
+** the Free Software Foundation; either version 2 of the License, or
+** (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software
+** Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+**
+******************************************************************************
+*/
 
 #define RPMC_V5
 #include <bcm2835.h>
@@ -125,7 +144,7 @@ volatile unsigned *gclk_base;
 #define SW1 	(1 << SW1_PIN)
 #define DAT_DIR (1 << RC21)
 
-#define MSX_CTRL_FLAG (MSX_SLTSL1 | MSX_SLTSL3 | MSX_CS1 | MSX_CS2 | MSX_RD | MSX_WR | MSX_IORQ | MSX_MREQ | DAT_DIR)
+#define MSX_CTRL_FLAG (MSX_SLTSL1 | MSX_SLTSL3 | MSX_CS1 | MSX_CS2 | MSX_RD | MSX_WR | MSX_IORQ | MSX_MREQ)
 
 #else
 // MSX slot access macro
@@ -183,260 +202,14 @@ volatile unsigned *gclk_base;
 pthread_mutex_t mutex;
 
 int setup_io();
+void frontled(unsigned char byte);
 int msxread(int slot, unsigned short addr);
 void msxwrite(int slot, unsigned short addr, unsigned char byte);
 int msxreadio(unsigned short addr);
 void msxwriteio(unsigned short addr, unsigned char byte);
 void clear_io();
-void setDataIn();
-void setDataOut();
-void spi_clear();
-void spi_set(int addr, int rd, int mreq, int slt1);
 void setup_gclk();
 
-void setDataIn()
-{
-#if 0
-	INP_GPIO(MD00_PIN);
-	INP_GPIO(MD01_PIN);
-	INP_GPIO(MD02_PIN);
-	INP_GPIO(MD03_PIN);
-	INP_GPIO(MD04_PIN);
-	INP_GPIO(MD05_PIN);
-	INP_GPIO(MD06_PIN);
-	INP_GPIO(MD07_PIN);
-#else
-	*(gpio+1) &= 0x03f;
-#endif	
-}
-
-/*
-0099 9888 7776 6655 5444 3332 2211 1000
-
-0099 9888 7776 6655 5444 3332 2211 1000
-  00 1001 0010 0100 1001 0010 01xx xxxx
-   0    9    2    4    9    2    7    f
-0099 9888 7776 6655 5444 3332 2211 1000
-*/
-
-void inline setDataOut()
-{
-#if 0
-	OUT_GPIO(MD00_PIN);
-	OUT_GPIO(MD01_PIN);
-	OUT_GPIO(MD02_PIN);
-	OUT_GPIO(MD03_PIN);
-	OUT_GPIO(MD04_PIN);
-	OUT_GPIO(MD05_PIN);
-	OUT_GPIO(MD06_PIN);
-	OUT_GPIO(MD07_PIN);
-#else
-	*(gpio1) &= 0x0924927f;
-	*(gpio1) |= 0x09249240;
-	GPIO_SET = 0xff << MD00_PIN;	
-#endif	
-}
-
-void inline spi_clear()
-{
-	int x;
-#ifdef RPMC_V5
-	GPIO_SET = LE_A | 0xffff;
-	GPIO_CLR = LE_C | LE_D; 
-#else
-#ifdef RPMC_V4
-	 GPIO_SET = SPI_SCLK | SPI_MOSI0 | SPI_MOSI1 | SPI_MOSI2;
-	 GPIO_CLR = SPI_CS | SPI_SCLK;
-#else	 
-	 GPIO_CLR = SPI_SCLK;
-	 GPIO_SET = SPI_MOSI;
-	 for(x = 0; x < 24; x++)
-	 {
-		 GPIO_CLR = SPI_SCLK;
-		 GPIO_SET = SPI_SCLK;
-	 }
-#endif	 
-	 GPIO_SET = SPI_CS;
-#endif	 
-}	
-
-void inline spi_set(int addr, int rd, int mreq, int slt1)
-{
-	int cs1, cs12, cs2, wr, iorq, x, spi_data, spi_result;
-	int set, clr;
-	if (!mreq) 
-	{
-		cs1 = !((addr & 0xc000) == 0x4000);
-		cs2 = !((addr & 0xc000) == 0x8000);
-		cs12 = cs1 && cs2;
-	} 
-	else
-	{
-		cs1 = cs2 = cs12 = 1;
-	}
-#ifdef RPMC_V5
-#else
-#if 1
-	if (slt1 == 2)
-		GPIO_CLR = MSX_SLTSL1;
-	else
-		GPIO_SET = MSX_SLTSL1;
-#endif	
-	GPIO_CLR = SPI_CS;
-#if 0	
-	spi_data = cs12 << 23 | cs1 << 22 | cs2 << 21 | mreq << 20 | !mreq << 19 | rd << 18 | !rd << 17 | slt1 << 16 | (addr & 0xffff);
-	for(x = 23; x >= 0; x--)
-	{
-		GPIO_CLR = SPI_SCLK;
-		if (spi_data & (1<<x))
-		{
-			GPIO_SET = SPI_MOSI;
-		}
-		else
-		{
-			GPIO_CLR = SPI_MOSI;
-		}
-		GPIO_SET = SPI_SCLK;
-	}
-#else
-#ifdef RPMC_V4	
-#if 1
-	clr = SPI_SCLK | SPI_MOSI0 | SPI_MOSI1 | SPI_MOSI2;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (cs12)			set |= SPI_MOSI0;
-	if (addr & 1<<15)	set |= SPI_MOSI1;
-	if (addr & 1<<7)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (cs1)			set |= SPI_MOSI0; 
-	if (addr & 1<<14)	set |= SPI_MOSI1;
-	if (addr & 1<<6)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (cs2)			set |= SPI_MOSI0;
-	if (addr & 1<<13)	set |= SPI_MOSI1;
-	if (addr & 1<<5)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (mreq)			set |= SPI_MOSI0;
-	if (addr & 1<<12)	set |= SPI_MOSI1;
-	if (addr & 1<<4)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (!mreq)			set |= SPI_MOSI0;
-	if (addr & 1<<11)	set |= SPI_MOSI1;
-	if (addr & 1<<3)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (rd)				set |= SPI_MOSI0;
-	if (addr & 1<<10)	set |= SPI_MOSI1;
-	if (addr & 1<<2)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (!rd)			set |= SPI_MOSI0; 
-	if (addr & 1<<9)	set |= SPI_MOSI1;
-	if (addr & 1<<1)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-	set = SPI_SCLK;
-	if (slt1 != 1 && !mreq)	set |= SPI_MOSI0;
-	if (addr & 1<<8)	set |= SPI_MOSI1;
-	if (addr & 1<<0)	set |= SPI_MOSI2;
-	GPIO_SET = set;
-	GPIO_CLR = clr;
-#else
-	GPIO_CLR = SPI_SCLK; 
-	set = SPI_SCLK;
-	if (cs12)			set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	if (addr & 1<<15)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	if (addr & 1<<7)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	if (cs1)			set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	GPIO_CLR = clr;
-	GPIO_SET = set;
-	GPIO_CLR = SPI_SCLK; 
-	set = SPI_SCLK;
-	clr = 0;
-	if (addr & 1<<14)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	if (addr & 1<<6)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	if (cs2)			set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	if (addr & 1<<13)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	GPIO_CLR = clr;
-	GPIO_SET = set;
-	GPIO_CLR = SPI_SCLK; 
-	set = SPI_SCLK;
-	clr = 0;
-	if (addr & 1<<5)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	if (mreq)			set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	if (addr & 1<<12)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	if (addr & 1<<4)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	GPIO_CLR = clr;
-	GPIO_SET = set;
-	GPIO_CLR = SPI_SCLK; 
-	set = SPI_SCLK;
-	clr = 0;
-	if (!mreq)			set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	if (addr & 1<<11)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	if (addr & 1<<3)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	if (rd)				set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	GPIO_CLR = clr;
-	GPIO_SET = set;
-	GPIO_CLR = SPI_SCLK; 
-	set = SPI_SCLK;
-	clr = 0;
-	if (addr & 1<<10)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	if (addr & 1<<2)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	if (!rd)			set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	if (addr & 1<<9)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	GPIO_CLR = clr;
-	GPIO_SET = set;
-	GPIO_CLR = SPI_SCLK; 
-	set = SPI_SCLK;
-	clr = 0;
-	if (addr & 1<<1)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	if (slt1 != 1)		set |= SPI_MOSI0; else clr |= SPI_MOSI0; 
-	if (addr & 1<<8)	set |= SPI_MOSI1; else clr |= SPI_MOSI1; 
-	if (addr & 1<<0)	set |= SPI_MOSI2; else clr |= SPI_MOSI2; 
-	GPIO_CLR = clr;
-	GPIO_SET = set;
-#endif	
-#else
-	GPIO_CLR = SPI_SCLK; if (cs12)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (cs1)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (cs2)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (mreq)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (!mreq)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (rd)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (!rd)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (slt1 != 1)	GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;	
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<15) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<14) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<13) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<12) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<11) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<10) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<9) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<8) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<7) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<6) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<5) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<4) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<3) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<2) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1<<1) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-	GPIO_CLR = SPI_SCLK; if (addr & 1) GPIO_SET = SPI_MOSI; else GPIO_CLR = SPI_MOSI; GPIO_SET = SPI_SCLK;
-#endif	
-#endif	
-	GPIO_SET = SPI_CS;
-#endif
-	return;
-}
 
 void SetAddress(unsigned short addr)
 {
@@ -460,34 +233,33 @@ void SetData(int flag, int delay, unsigned char byte)
 	GPIO_CLR = flag | LE_D | DAT_DIR | 0xff;
 	GPIO_SET = MSX_WR;
 	GPIO_SET = LE_C | byte;
-	while(!(GPIO & MSX_WAIT));
 	for(int i=0; i < 5; i++)
 		GPIO_SET = 0;
 	GPIO_CLR = MSX_WR;
 	for(int i=0; i < delay; i++)
 	{
-		GPIO_SET = LE_C | byte;
+		GPIO_SET = byte;
 	}
+	while(!(GPIO & MSX_WAIT));
 	GPIO_SET = MSX_WR;
 	byte = GPIO;
 	byte = GPIO;
-	GPIO_SET = LE_D | MSX_CTRL_FLAG | DAT_DIR;   	
+	GPIO_SET = MSX_CTRL_FLAG | DAT_DIR | 0xff;   	
+	GPIO_SET = 0;
+	GPIO_SET = LE_D;
 	GPIO_CLR = LE_C;
 }   
 
 unsigned char GetData(int flag, int delay)
 {
 	unsigned char byte;
-	GPIO_SET = LE_C | DAT_DIR;
-	GPIO_CLR = MSX_CLK | flag;
+	GPIO_CLR = LE_D | flag;
+	GPIO_SET = LE_C | DAT_DIR | 0xff;
 	while(!(GPIO & MSX_WAIT));
 	SetDelay(delay);
 	byte = GPIO;
+	GPIO_SET = MSX_RD | MSX_MREQ;
 	GPIO_SET = LE_D;
-	GPIO_SET = MSX_CTRL_FLAG | MSX_CLK;
-   	GPIO_SET = MSX_CLK;
-   	GPIO_CLR = LE_C | MSX_CLK;
-   	GPIO_SET = MSX_CLK;
 	return byte;
 }
 
@@ -501,7 +273,7 @@ unsigned char GetData(int flag, int delay)
 		return 0xff;
 	pthread_mutex_lock(&mutex);
 	SetAddress(addr);
-	byte = GetData((slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ | MSX_RD | cs1 | cs2, 25);
+	byte = GetData((slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ | MSX_RD | cs1 | cs2, 35);
 	GPIO_SET = LE_C | MSX_CTRL_FLAG;
 	pthread_mutex_unlock(&mutex);	
 	GPIO_CLR = LE_C;
@@ -512,7 +284,7 @@ unsigned char GetData(int flag, int delay)
  {
 	pthread_mutex_lock(&mutex);
 	SetAddress(addr);
-	SetData((slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ, 35, byte);
+	SetData((slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ, 45, byte);
 	GPIO_SET = LE_C | MSX_CTRL_FLAG;
 	pthread_mutex_unlock(&mutex);	
 	GPIO_CLR = LE_C;
@@ -538,7 +310,7 @@ unsigned char GetData(int flag, int delay)
 	SetData(MSX_IORQ, 55, byte);
 	GPIO_SET = LE_C | MSX_CTRL_FLAG;
 	pthread_mutex_unlock(&mutex);		
-	GPIO_CLR = LE_C;
+	GPIO_CLR = LE_C;  
 	return;
  }
  
@@ -624,7 +396,7 @@ int stick_this_thread_to_core(int core_id) {
 #endif
 void clear_io()
 {
-	spi_clear();
+//	spi_clear();
 }
 
 void msxinit()
@@ -637,6 +409,7 @@ void msxinit()
         printf("GPIO init error\n");
         exit(0);
     }
+    frontled(0x0);
 	printf("MSX BUS initialized\n");
 }
 
@@ -648,6 +421,30 @@ void msxclose()
 int msx_pack_check()
 {
 	return !(GPIO & SW1);
+}
+void frontled(unsigned char byte)
+{
+#define SRCLK (1<<RC22)
+#define RCLK (1<<RC23)
+#define SER (1<<RC26)
+    static unsigned char oldbyte = 0;
+    if (oldbyte != byte)
+    {
+        oldbyte = byte;
+        pthread_mutex_lock(&mutex);
+        GPIO_CLR = SRCLK | RCLK | SER;
+        for (int i = 0; i < 8; i++)
+        {
+            if ((byte >> i) & 1)
+                GPIO_SET = SER;
+            else
+                GPIO_CLR = SER;
+            GPIO_SET = SRCLK;
+            GPIO_CLR = SRCLK;
+        }
+        GPIO_SET = RCLK;
+        pthread_mutex_unlock(&mutex);	    
+    }
 }
 
 

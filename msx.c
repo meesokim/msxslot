@@ -3,6 +3,8 @@
 #include <time.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "msxbus.h"
 
 extern volatile unsigned *gpio7;
@@ -105,7 +107,7 @@ int main(int argc, char **argv)
   int pagetest = 0;
   int iotest = 0, fdctest = 0, fmpactest = 0;
   int slot = 0;
-  int b;
+  int b, konami = 0;
   int cnt, test = 0;
   int port, hi, lo;
   int miscount = 0;
@@ -136,12 +138,13 @@ int main(int argc, char **argv)
 		  {"compare", required_argument, 0, 'c'},
 		  {"out", 	  required_argument, 0, 'o'},
 		  {"fmpac",   no_argument,       0, 'm'},
+		  {"k",       no_argument,       0, 'k'},
 		  {0, 0, 0, 0}
 		};  
 	signal(SIGINT, sigint);
     while (1)
 	{
-      c = getopt_long (argc, argv, "vbitfp:10c:o:mI",
+      c = getopt_long (argc, argv, "vbitfp:10c:o:mkI",
                        long_options, &option_index);
       if (c == -1)
         break;
@@ -168,6 +171,10 @@ int main(int argc, char **argv)
 				}
 				exit(0);
 				break;
+            case 'k':
+                konami = 1;
+                printf("Konami enabled\n");
+                break;
 			case 't':
 				test = 1;
 				printf("test enabled\n");
@@ -224,7 +231,7 @@ int main(int argc, char **argv)
 		  for(addr=offset; addr < offset + size; addr ++)
 		  {
 			  c = ' ';
-			  cnt = 10;
+			  cnt = 100;
 			  byte = msxread(slot, addr);
 			  while(cnt--)
 			  {
@@ -267,6 +274,38 @@ int main(int argc, char **argv)
 */	  
 	  printf("\n");
 	  exit(0);
+  }
+  if (konami)
+  {
+      freopen(NULL, "wb", stdout);     
+      for(i = 0; i < 1<<5; i+=4)
+      {
+          msxwrite(1, 0x5000, i);
+          for(j = 0; j < 0x2000; j++) 
+          {
+             byte = msxread(slot, 0x4000+j);
+             if (1)
+                 printf("%c", byte);
+             else
+             {
+                 if (j % 16 == 0)
+                 {
+                    printf("\n%06x:", i * 0x2000 + j);
+                 }
+                 else
+                    printf("%02x ", byte);
+             }
+          }
+          msxwrite(1, 0x6000, i+1);
+          for(j = 0; j < 0x2000; j++) printf("%c", msxread(slot, 0x7000+j));
+          msxwrite(1, 0x8000, i+2);
+          for(j = 0; j < 0x2000; j++) printf("%c", msxread(slot, 0x9000+j));
+          msxwrite(1, 0xa000, i+3);
+          for(j = 0; j < 0x2000; j++) printf("%c", msxread(slot, 0xb000+j));
+      }
+      if (0)
+        printf("\n");
+      exit(0);
   }
 #define KONAMI
   if (pagetest > 0)
@@ -374,18 +413,6 @@ int main(int argc, char **argv)
 		  else
 		  {
 				byte = msxread(slot, addr);
-				b = byte;
-#if 1				
-				if (compare)
-				{
-					if(byte == comp[addr-0x4000])
-						b = byte;
-					else
-						b = comp[addr];					
-				}
-				else
-					b = msxread(slot, addr);
-#endif				
 		  }
 	#if 1	  
 		  if (fp)
@@ -393,7 +420,6 @@ int main(int argc, char **argv)
 		  else
 		  {
 			  c = ' ';
-			  if (byte != b) 
 	#if 1
 			  {
 				  cnt = 10;
@@ -401,11 +427,11 @@ int main(int argc, char **argv)
 				  if (byte != (b = msxread(slot, addr)))
 				  {
 					 int cc = 10;
-//					 printf("addr=0x%04x, value=", addr);
-//					 printf("0x%02x!=0x%02x\n", byte, b);
+					 printf("addr=0x%04x, value=", addr);
+					 printf("0x%02x!=0x%02x\n", byte, b);
 					 byte = b;
 					 #if 0
-					 while(cnt--) {
+					 while(cnt--) { 
 						 b = msxread(slot, addr);
 						 printf("0x%02x ", b);
 					 }
@@ -414,8 +440,6 @@ int main(int argc, char **argv)
 					 #endif
 					 c='*';
 				  }
-				  else
-					  break;
 				  
 			  }
 	#else
