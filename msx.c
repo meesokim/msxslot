@@ -88,9 +88,6 @@ struct MISS {
 
 static int verbose_flag;
 static int binary;
-static unsigned char ROM[] = {
-#include "Antarctic.data"	
-};
 void sigint(int a)
 {
 	GPIO_SET = LE_C | MSX_CTRL_FLAG;
