@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 #define KONAMI
   if (pagetest > 0)
   {
-	  slot = 1;
+	  slot = 0;
 	  int page = pagetest > 1 ?  16: 24;
 	  while(1)
 	  {
@@ -315,7 +315,7 @@ int main(int argc, char **argv)
 		  for(i = 0; i < page; i++)
 		  {
 			if (pagetest > 1)
-			msxwrite(slot, 0x6000, i);
+			msxwrite(slot, 0x8000, i);
 			else 
 			{				
 			msxwrite(slot, 0x7fff, i);
@@ -328,10 +328,10 @@ int main(int argc, char **argv)
 			}
 //			for(int i=0; i < 1000000; i++);
 			 printf("slot%d/page%02d:", slot, i);
-			 for(j = 0; j < 16; j++)
+			 for(j = 0; j < 32; j++)
 			 {
 				if (pagetest > 1)
-				printf("%02x ", msxread(slot, 0x6000+j));
+				printf("%02x ", msxread(slot, 0x8000+j));
 				else				
 				printf("%02x ", msxread(slot, 0x4000+j));
 			 }
