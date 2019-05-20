@@ -124,6 +124,9 @@ volatile unsigned *gclk_base;
 #define WAIT_PIN	RC25
 #define BUSDIR_PIN	RC26
 #define SW1_PIN		RC27
+#define PWR_PIN     RC22
+#define CAPS_PIN    RC23
+#define CODE_PIN    RC26    
 
 #define MSX_SLTSL1 (1 << SLTSL1_PIN)
 #define MSX_SLTSL3 (1 << SLTSL3_PIN)
@@ -143,6 +146,9 @@ volatile unsigned *gclk_base;
 #define MSX_CLK (1 << CLK_PIN)
 #define SW1 	(1 << SW1_PIN)
 #define DAT_DIR (1 << RC21)
+#define CAPS_LED    (1 << CAPS_PIN)
+#define PWR_LED     (1 << PWR_PIN)
+#define CODE_LED    (1 << CODE_PIN)
 
 #define MSX_CTRL_FLAG (MSX_SLTSL1 | MSX_SLTSL3 | MSX_CS1 | MSX_CS2 | MSX_RD | MSX_WR | MSX_IORQ | MSX_MREQ)
 
@@ -210,6 +216,8 @@ void msxwriteio(unsigned short addr, unsigned char byte);
 void clear_io();
 void setup_gclk();
 
+void checkInt()
+{}
 
 void SetAddress(unsigned short addr)
 {
@@ -396,7 +404,7 @@ void msxinit()
         printf("GPIO init error\n");
         exit(0);
     }
-    frontled(0x0);
+    frontled(0x80);
 	printf("MSX BUS initialized\n");
 }
 
@@ -411,6 +419,7 @@ int msx_pack_check()
 }
 void frontled(unsigned char byte)
 {
+#ifdef RPMC_FRONTLED    
 #define SRCLK (1<<RC22)
 #define RCLK (1<<RC23)
 #define SER (1<<RC26)
@@ -418,6 +427,7 @@ void frontled(unsigned char byte)
     if (oldbyte != byte)
     {
         oldbyte = byte;
+#ifdef FRONTLED_595        
         pthread_mutex_lock(&mutex);
         GPIO_CLR = SRCLK | RCLK | SER;
         for (int i = 0; i < 8; i++)
@@ -431,7 +441,22 @@ void frontled(unsigned char byte)
         }
         GPIO_SET = RCLK;
         pthread_mutex_unlock(&mutex);	    
+#else 
+        if (byte & (1<<2))
+            GPIO_CLR = CAPS_LED;
+        else
+            GPIO_SET = CAPS_LED;
+        if (byte & (1<<3))
+            GPIO_CLR = CODE_LED;
+        else
+            GPIO_SET = CODE_LED;
+        if (byte & (1<<7))
+            GPIO_CLR = PWR_LED;
+        else
+            GPIO_SET = PWR_LED;
+#endif 
     }
+#endif           
 }
 
 
