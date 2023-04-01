@@ -55,7 +55,8 @@ volatile unsigned *gpio7;
 volatile unsigned *gpio13;
 volatile unsigned *gpio1;
 volatile unsigned *gclk_base;
- 
+volatile unsigned *timer_base;
+
  
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
 #define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
@@ -231,6 +232,8 @@ void SetAddress(unsigned short addr)
 
 void SetDelay(int j)
 {
+	// unsigned time = *(timer_base+1);
+	// while(*(timer_base+1)<time + j);
 	for(int i=0; i<j; i++)
 	    GPIO_SET = 0;
 }
@@ -241,7 +244,7 @@ void SetData(int ioflag, int flag, int delay, unsigned char byte)
 	GPIO_CLR = flag;
     SetDelay(2);
 	GPIO_CLR = MSX_WR;
-	//while(!(GPIO & MSX_WAIT));
+	while(!(GPIO & MSX_WAIT));
     SetDelay(delay);
    	GPIO_SET = MSX_CONTROLS;
 	GPIO_CLR = LE_C;
@@ -251,12 +254,10 @@ void SetData(int ioflag, int flag, int delay, unsigned char byte)
 unsigned char GetData(int flag, int rflag, int delay)
 {
 	unsigned char byte;
-	GPIO_SET = DAT_DIR | 0xff;
-	GPIO_CLR = flag;
-    SetDelay(1);
-	GPIO_CLR = rflag;
-	//while(!(GPIO & MSX_WAIT));
-	SetDelay(delay);
+	GPIO_SET = DAT_DIR;
+	GPIO_CLR = rflag | flag;
+	while(!(GPIO & MSX_WAIT));
+	SetDelay(delay*4);
 	byte = GPIO;
   	GPIO_SET = LE_D | MSX_CONTROLS;
 	GPIO_CLR = LE_C;
@@ -338,6 +339,8 @@ int setup_io()
 	gpio13 = gpio+13;
 	gpio1 = gpio+1;
 	//SET_GPIO_ALT(20, 5);
+	// *gpio = IOSEL0;
+	timer_base = bcm2835_regbase(BCM2835_REGBASE_ST);
 	gclk_base = bcm2835_regbase(BCM2835_REGBASE_CLK);
 	if (gclk_base != MAP_FAILED)
 	{
@@ -361,8 +364,8 @@ int setup_io()
 		printf("clock disabled\n");
 	
 	bcm2835_gpio_pud(BCM2835_GPIO_PUD_UP);
-	for(int i = 0; i < 8; i++)
-		bcm2835_gpio_pudclk(i, 1);
+	// for(int i = 0; i < 8; i++)
+	// 	bcm2835_gpio_pudclk(i, 1);
 	bcm2835_gpio_pudclk(27,1);
 	
 	GPIO_SET = LE_C | MSX_CONTROLS | MSX_WAIT | MSX_INT;
