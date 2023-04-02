@@ -65,7 +65,8 @@ volatile unsigned *timer_base;
  
 #define GPIO_SET *(gpio7)  // sets   bits which are 1 ignores bits which are 0
 #define GPIO_CLR *(gpio10) // clears bits which are 1 ignores bits which are 0
- 
+#define GPIO_SEL *(gpio) 
+
 #define GET_GPIO(g) (*(gpio13)&(1<<g)) // 0 if LOW, (1<<g) if HIGH
 #define GPIO (*(gpio13))
  
@@ -206,6 +207,20 @@ volatile unsigned *timer_base;
 #define MSX_SET_INPUT(g)  INP_GPIO(g)
 #define MSX_SET_CLOCK(g)  INP_GPIO(g); ALT0_GPIO(g)
 
+#define GPIO_FSEL0_OUT        0x1 
+#define GPIO_FSEL1_OUT        0x8
+#define GPIO_FSEL2_OUT       0x40 
+#define GPIO_FSEL3_OUT      0x200 
+#define GPIO_FSEL4_OUT     0x1000
+#define GPIO_FSEL5_OUT     0x8000
+#define GPIO_FSEL6_OUT    0x40000
+#define GPIO_FSEL7_OUT   0x200000
+#define GPIO_FSEL8_OUT  0x1000000 
+#define GPIO_FSEL9_OUT  0x8000000
+
+#define DATAOUT (GPIO_FSEL0_OUT | GPIO_FSEL1_OUT | GPIO_FSEL2_OUT | GPIO_FSEL3_OUT | GPIO_FSEL4_OUT | GPIO_FSEL5_OUT | GPIO_FSEL6_OUT | GPIO_FSEL7_OUT | GPIO_FSEL8_OUT | GPIO_FSEL9_OUT)
+#define DATAIN  (GPIO_FSEL8_OUT | GPIO_FSEL9_OUT)
+
 pthread_mutex_t mutex;
 
 int setup_io();
@@ -222,9 +237,8 @@ void checkInt()
 
 void SetAddress(unsigned short addr)
 {
-	GPIO_CLR = LE_C | 0xffff | DAT_DIR;
+	GPIO_CLR = LE_C | 0xffff;
 	GPIO_SET = LE_A | LE_D | addr;
-	GPIO_SET = LE_A;
     GPIO_CLR = LE_A;
 	GPIO_SET = LE_C | MSX_CONTROLS;
 	GPIO_CLR = LE_D | 0xff;
@@ -241,23 +255,22 @@ void SetDelay(int j)
 void SetData(int ioflag, int flag, int delay, unsigned char byte)
 {
 	GPIO_SET = byte;
-	GPIO_CLR = flag;
-    SetDelay(2);
+	GPIO_CLR = flag | DAT_DIR;
 	GPIO_CLR = MSX_WR;
+    SetDelay(10);
 	while(!(GPIO & MSX_WAIT));
     SetDelay(delay);
-   	GPIO_SET = MSX_CONTROLS;
+   	GPIO_SET = LE_D | MSX_CONTROLS;
 	GPIO_CLR = LE_C;
+	GPIO_SET = LE_D;
+}
 
-}   
-
-unsigned char GetData(int flag, int rflag, int delay)
+unsigned char GetData(int flag, int rflag, volatile int delay)
 {
-	unsigned char byte;
-	GPIO_SET = DAT_DIR;
-	GPIO_CLR = rflag | flag;
-	while(!(GPIO & MSX_WAIT));
-	SetDelay(delay*4);
+	register unsigned char byte;
+	GPIO_CLR = rflag;
+	GPIO_CLR = flag;
+	while(!(GPIO & MSX_WAIT) || delay--); 	
 	byte = GPIO;
   	GPIO_SET = LE_D | MSX_CONTROLS;
 	GPIO_CLR = LE_C;
@@ -268,10 +281,11 @@ unsigned char GetData(int flag, int rflag, int delay)
  {
 	unsigned char byte;
 	int cs1, cs2, cs12;
+	SetAddress(addr);
 	cs1 = (addr & 0xc000) == 0x4000 ? MSX_CS1: 0;
 	cs2 = (addr & 0xc000) == 0x8000 ? MSX_CS2: 0;
-	SetAddress(addr);
-	byte = GetData((slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ, MSX_RD | cs1 | cs2, 30);
+	GPIO_SET = DAT_DIR;
+	byte = GetData((slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ, MSX_RD | cs1 | cs2, 50);
 #ifdef DEBUG    
 	printf("+%04x:%02xr\n", addr, byte);
 #endif
@@ -281,7 +295,7 @@ unsigned char GetData(int flag, int rflag, int delay)
  void msxwrite(int slot, unsigned short addr, unsigned char byte)
  {
 	SetAddress(addr);
-	SetData(MSX_MREQ, (slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ, 45, byte);
+	SetData(MSX_MREQ, (slot == 0 ? MSX_SLTSL1 : MSX_SLTSL3) | MSX_MREQ, 10, byte);
 #ifdef DEBUG  
 	printf("+%04x:%02xw\n", addr, byte);
 #endif
@@ -323,6 +337,7 @@ int rtapi_open_as_root(const char *filename, int mode) {
 //
 // Set up a memory regions to access GPIO
 //
+int dir[28] = { 1,1,1,1,1,1,1,1,1,1,  1,1,1,1,1,1,1,1,1,1,  1,1,1,1,0,1,0,0 };
 int setup_io()
 {
 	int i, speed_id, divisor ;	
@@ -330,7 +345,7 @@ int setup_io()
 	gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
 	for(int i=0; i < 27; i++)
 	{
-		bcm2835_gpio_fsel(i, 1);    
+		bcm2835_gpio_fsel(i, dir[i]);    
 		bcm2835_gpio_set_pud(i, BCM2835_GPIO_PUD_UP);
 	}
 
@@ -342,40 +357,40 @@ int setup_io()
 	// *gpio = IOSEL0;
 	timer_base = bcm2835_regbase(BCM2835_REGBASE_ST);
 	gclk_base = bcm2835_regbase(BCM2835_REGBASE_CLK);
-	if (gclk_base != MAP_FAILED)
-	{
-		int divi, divr, divf, freq;
-		bcm2835_gpio_fsel(20, BCM2835_GPIO_FSEL_ALT5); // GPIO_20
-		speed_id = 1;
-		freq = 3500000;
-		divi = 19200000 / freq ;
-		divr = 19200000 % freq ;
-		divf = (int)((double)divr * 4096.0 / 19200000.0) ;
-		if (divi > 4095)
-			divi = 4095 ;		
-		divisor = 1 < 12;// | (int)(6648/1024);
-		GP_CLK0_CTL = 0x5A000000 | speed_id;    // GPCLK0 off
-		while (GP_CLK0_CTL & 0x80);    // Wait for BUSY low
-		GP_CLK0_DIV = 0x5A000000 | (divi << 12) | divf; // set DIVI
-		GP_CLK0_CTL = 0x5A000010 | speed_id;    // GPCLK0 on
-		printf("clock enabled: 0x%08x\n", GP_CLK0_CTL );
-	}
-	else
-		printf("clock disabled\n");
+	// if (gclk_base != MAP_FAILED)
+	// {
+	// 	int divi, divr, divf, freq;
+	// 	bcm2835_gpio_fsel(20, BCM2835_GPIO_FSEL_ALT5); // GPIO_20
+	// 	speed_id = 1;
+	// 	freq = 3500000;
+	// 	divi = 19200000 / freq ;
+	// 	divr = 19200000 % freq ;
+	// 	divf = (int)((double)divr * 4096.0 / 19200000.0) ;
+	// 	if (divi > 4095)
+	// 		divi = 4095 ;		
+	// 	divisor = 1 < 12;// | (int)(6648/1024);
+	// 	GP_CLK0_CTL = 0x5A000000 | speed_id;    // GPCLK0 off
+	// 	while (GP_CLK0_CTL & 0x80);    // Wait for BUSY low
+	// 	GP_CLK0_DIV = 0x5A000000 | (divi << 12) | divf; // set DIVI
+	// 	GP_CLK0_CTL = 0x5A000010 | speed_id;    // GPCLK0 on
+	// 	printf("clock enabled: 0x%08x\n", GP_CLK0_CTL );
+	// }
+	// else
+	// 	printf("clock disabled\n");
 	
-	bcm2835_gpio_pud(BCM2835_GPIO_PUD_UP);
-	// for(int i = 0; i < 8; i++)
-	// 	bcm2835_gpio_pudclk(i, 1);
-	bcm2835_gpio_pudclk(27,1);
+	// bcm2835_gpio_pud(BCM2835_GPIO_PUD_UP);
+	// // for(int i = 0; i < 8; i++)
+	// // 	bcm2835_gpio_pudclk(i, 1);
+	// bcm2835_gpio_pudclk(27,1);
 	
-	GPIO_SET = LE_C | MSX_CONTROLS | MSX_WAIT | MSX_INT;
-	GPIO_SET = LE_A | LE_D;
-	GPIO_CLR = LE_C | 0xffff;
-	GPIO_CLR = LE_C;
-	GPIO_CLR = MSX_RESET;
-	for(int i=0;i<2000000;i++);
-	GPIO_SET = MSX_RESET;
-	for(int i=0;i<1000000;i++);
+	// GPIO_SET = LE_C | MSX_CONTROLS | MSX_WAIT | MSX_INT;
+	// GPIO_SET = LE_A | LE_D;
+	// GPIO_CLR = LE_C | 0xffff;
+	// GPIO_CLR = LE_C;
+	// GPIO_CLR = MSX_RESET;
+	// for(int i=0;i<2000000;i++);
+	// GPIO_SET = MSX_RESET;
+	// for(int i=0;i<1000000;i++);
 	return 0;
 } // setup_io
 
