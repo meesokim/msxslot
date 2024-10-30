@@ -40,7 +40,7 @@ OUTPUT = $(shell grep PROJECT_OUTPUT_DIRECTORY $(PROJECT).qsf | awk '{ print $$4
 all: smart.log $(PROJECT).asm.rpt $(PROJECT).sta.rpt pof jic
 
 clean:
-	$(RM) -f $(OUTPUT) simulation db incremental_db smart.log *.chg *.sof *.done *.summary *.rpt *.smsg
+	$(RM) -r $(OUTPUT) simulation db incremental_db smart.log *.chg *.sof *.done *.summary *.rpt *.smsg
 
 map: smart.log $(PROJECT).map.rpt
 fit: smart.log $(PROJECT).fit.rpt
