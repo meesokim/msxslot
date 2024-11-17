@@ -1,25 +1,34 @@
 `timescale 10ns/1ns
 
-module msxbus (msltsl1, msltsl2, mcs1, mcs2, mcs12, mdata, maddr, mrd, mwr, miorq, mmreq, mreset, mm1, msxclk, mwait,
-					cs, a0, mode, ready, clk, md, reset,
-					rw, mmeio, sltsl, mswsrc,
+module msxbus 
+(
+	input clk, cs, a0, mode, rw, mmeio, sltsl,
+	inout reg [15:0] md,
+	output reg ready,
+	output reg msltsl1, msltsl2, mrd, mwr, miorq, mmreq, mm1, mreset,
+	output wire mcs1, mcs2, mcs12, mswsrc,
+	output reg [15:0] maddr,
+	inout reg [7:0] mdata,
+	input mwait,
+	input reset,
+	output reg msxclk,
+	input sclk,
+	output miso,
+	input mosi,
+	input scs,
 );
 
-input clk, cs, a0, mode, rw, mmeio, sltsl;
-inout reg [15:0] md;
-output reg ready;
-output reg msltsl1, msltsl2, mrd, mwr, miorq, mmreq, mm1, mreset;
-output wire mcs1, mcs2, mcs12, mswsrc;
-output reg [15:0] maddr;
-inout reg [7:0] mdata;
-input mwait;
-input reset;
 
-output reg msxclk;
+reg odv, idv;
+reg [7:0] rcmd;
+reg [7:0] rdata;
+reg [7:0] wdata;
 reg [15:0] addr;
 reg [2:0] count;
 reg [3:0] rcnt;
 reg [2:0] wcnt;
+
+SPI_Slave (reset, clk, odv, rdata, idv, wdata, addr, rcmd, sclk, miso, miso, scs);
 
 assign mcs1   = (!msltsl1 | !msltsl2) & maddr[14] & !maddr[15] ? 1'b0 : 1'b1;
 assign mcs2   = (!msltsl1 | !msltsl2) & !maddr[14] & maddr[15] ? 1'b0 : 1'b1;

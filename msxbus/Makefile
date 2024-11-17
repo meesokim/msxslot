@@ -26,7 +26,7 @@ BOARDFILE = msxbus
 #  $(shell find -name '*.qsys')
 
 SRCS = $(shell grep -e VERILOG_FILE -e VHDL_FILE $(PROJECT).qsf | awk '{ print $$4 }')
-SRCS += $(shell find src -name 'altpll*.v')
+SRCS += $(shell find . -name 'altpll*.v')
 OUTPUT = $(shell grep PROJECT_OUTPUT_DIRECTORY $(PROJECT).qsf | awk '{ print $$4 }')
 
 ###################################################################
