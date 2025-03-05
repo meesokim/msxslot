@@ -14,20 +14,16 @@ ASSIGNMENT_FILES = $(PROJECT).qpf $(PROJECT).qsf
 FAMILY = "MAX II"
 PART = EPM240T100C5
 FLASH_DEVICE = "EPCS4"
-BOARDFILE = msxbus
+BOARDFILE = RPMC 
 ###################################################################
 
 ###################################################################
 # Setup your sources here
-# SRCS = $(shell find -name '*.sv') \
-#  $(shell find -name '*.v') \
-#  $(shell find -name '*.vhdl') \
-#  $(shell find -name '*.vhd') \
-#  $(shell find -name '*.qsys')
-
-SRCS = $(shell grep -e VERILOG_FILE -e VHDL_FILE $(PROJECT).qsf | awk '{ print $$4 }')
-SRCS += $(shell find . -name 'altpll*.v')
-OUTPUT = $(shell grep PROJECT_OUTPUT_DIRECTORY $(PROJECT).qsf | awk '{ print $$4 }')
+SRCS = $(shell find . -name '*.sv') \
+  $(shell find . -name '*.v') \
+  $(shell find . -name '*.vhdl') \
+  $(shell find . -name '*.vhd') \
+  $(shell find . -name '*.qsys')
 
 ###################################################################
 # Main Targets
@@ -40,7 +36,7 @@ OUTPUT = $(shell grep PROJECT_OUTPUT_DIRECTORY $(PROJECT).qsf | awk '{ print $$4
 all: smart.log $(PROJECT).asm.rpt $(PROJECT).sta.rpt pof jic
 
 clean:
-	$(RM) -r $(OUTPUT) simulation db incremental_db smart.log *.chg *.sof *.done *.summary *.rpt *.smsg
+	$(RM) -rf reports db incremental_db smart.log *.chg
 
 map: smart.log $(PROJECT).map.rpt
 fit: smart.log $(PROJECT).fit.rpt
@@ -70,8 +66,7 @@ ifeq ($(shell uname -m),x86_64)
 QUARTUS_ARGS = 
 endif
 
-#MAP_ARGS = $(QUARTUS_ARGS) --family=$(FAMILY) --read_settings_files=on $(addprefix --source=,$(SRCS))
-MAP_ARGS = 
+MAP_ARGS = $(QUARTUS_ARGS) --family=$(FAMILY) --read_settings_files=on $(addprefix --source=,$(SRCS))
 FIT_ARGS = --part=$(PART) --read_settings_files=on
 ASM_ARGS = $(QUARTUS_ARGS)
 STA_ARGS = $(QUARTUS_ARGS)
@@ -85,7 +80,7 @@ PGM_ARGS = $(QUARTUS_ARGS) --no_banner --mode=jtag
 STAMP = echo done >
 
 $(PROJECT).map.rpt: map.chg $(SOURCE_FILES) 
-	$(QUARTUS_MAP) $(MAP_ARGS) $(PROJECT).qsf
+	$(QUARTUS_MAP) $(MAP_ARGS) $(PROJECT)
 	$(STAMP) fit.chg
 
 $(PROJECT).fit.rpt: fit.chg $(PROJECT).map.rpt
@@ -120,19 +115,19 @@ asm.chg:
 	
 show:
 	echo $(SRCS)
-
-pof: $(OUTPUT)/$(PROJECT).sof
+	
+pof: reports/$(PROJECT).sof
 	$(QUARTUS_CPF) -c -d $(FLASH_DEVICE) $< $(patsubst %.sof,%.pof,$<)
 	
-jic: $(OUTPUT)/$(PROJECT).sof
+jic: reports/$(PROJECT).sof
 	$(QUARTUS_CPF) -c -s $(PART) -d $(FLASH_DEVICE) $< $(patsubst %.sof,%.jic,$<)
 
 ###################################################################
 # Programming the device
 ###################################################################
 
-program: $(OUTPUT)/$(PROJECT).sof
-	$(QUARTUS_PGM) $(PGM_ARGS) -o "P;$(OUTPUT)/$(PROJECT).sof"
+program: reports/$(PROJECT).sof
+	$(QUARTUS_PGM) $(PGM_ARGS) -o "P;reports/$(PROJECT).sof"
 
-program-pof: $(OUTPUT)/$(PROJECT).pof
-	$(QUARTUS_PGM) $(PGM_ARGS) -o "BVP;$(OUTPUT)/$(PROJECT).pof"
+program-pof: reports/$(PROJECT).pof
+	$(QUARTUS_PGM) $(PGM_ARGS) -o "BVP;reports/$(PROJECT).pof"
