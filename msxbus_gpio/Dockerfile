@@ -1,36 +1,47 @@
-# Use an official ARMv7 cross-compilation image
-FROM multiarch/crossbuild
+FROM ubuntu:20.04
 
-# Install necessary packages
+# Set non-interactive mode for apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+
+# Configure apt to use proxy
+RUN echo 'Acquire::http::Proxy "http://168.219.61.252:8080";' > /etc/apt/apt.conf.d/proxy.conf
+RUN echo 'Acquire::https::Proxy "http://168.219.61.252:8080";' >> /etc/apt/apt.conf.d/proxy.conf
+
+# Install required packages
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    libncurses5-dev \
+    git \
     bc \
     bison \
     flex \
     libssl-dev \
-    wget \
-    git \
-    && apt-get clean
+    make \
+    gcc \
+    gcc-arm-linux-gnueabihf \
+    binutils-arm-linux-gnueabihf \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set environment variables for cross-compilation
+RUN git config --global http.proxy "http://168.219.61.252:8080"
+RUN git config --global http.sslVerify false
+
+# Set up build environment
 ENV ARCH=arm
 ENV CROSS_COMPILE=arm-linux-gnueabihf-
+ENV KERNEL_VERSION=1.20230405-1
 
-# Download and extract the Raspberry Pi kernel source
-RUN mkdir -p /usr/src/kernel
-WORKDIR /usr/src/kernel
-RUN wget https://github.com/raspberrypi/linux/archive/refs/tags/raspberrypi-kernel_1.20211029-1.tar.gz \
-    && tar -xzf raspberrypi-kernel_1.20211029-1.tar.gz --strip-components=1 \
-    && rm raspberrypi-kernel_1.20211029-1.tar.gz
+# Get Raspberry Pi kernel source
+WORKDIR /usr/src
+RUN git clone --depth=1 -b rpi-5.15.y https://github.com/raspberrypi/linux.git
+WORKDIR /usr/src/linux
 
-# Copy the module source code into the container
-COPY msxbus.c /usr/src/kernel/msxbus.c
-COPY Makefile /usr/src/kernel/Makefile
-
-# Compile the kernel module
+# Get default config for Raspberry Pi
+RUN make mrproper
+RUN make bcm2711_defconfig
 RUN make modules_prepare
-RUN make M=/usr/src/kernel
+RUN make scripts
+RUN make prepare
+RUN make modules -j 12  
 
-# Set the entrypoint to bash
-ENTRYPOINT ["/bin/bash"]
+# Create working directory for module compilation
+WORKDIR /workdir

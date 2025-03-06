@@ -92,6 +92,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
                 *read_data = gpio_get_value8();
                 gpio_set_value(GPIO_CLK, 1);
             }
+            break;
         case CMD_STATUS:
             gpio_set_value(GPIO_CLK, 0);
             udelay(1);
@@ -99,8 +100,8 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
             gpio_set_value(GPIO_CLK, 1);
             udelay(1);        
             break;
-        case default:
-            break
+        default:
+            break;
     }
 
     // Deassert CS
@@ -242,6 +243,7 @@ static const struct file_operations msxbus_fops = {
 
 static int __init msxbus_init(void) {
     int ret;
+    int i;
 
     gpio_base = ioremap(GPIO_BASE, GPIO_SIZE);
     if (!gpio_base) {
@@ -258,13 +260,13 @@ static int __init msxbus_init(void) {
 
     gpio_request(GPIO_CS, "msxbus_cs");
     gpio_request(GPIO_CLK, "msxbus_clk");
-    for (int i = GPIO_DATA_START; i <= GPIO_DATA_END; ++i) {
+    for ( i = GPIO_DATA_START; i <= GPIO_DATA_END; ++i) {
         gpio_request(i, "msxbus_data");
     }
 
     gpio_direction_output(GPIO_CS, 1);
     gpio_direction_output(GPIO_CLK, 0);
-    for (int i = GPIO_DATA_START; i <= GPIO_DATA_END; ++i) {
+    for ( i = GPIO_DATA_START; i <= GPIO_DATA_END; ++i) {
         gpio_direction_output(i, 0);
     }
 
@@ -273,12 +275,13 @@ static int __init msxbus_init(void) {
 }
 
 static void __exit msxbus_exit(void) {
+    int i;
     unregister_chrdev(240, "msxbus");
     iounmap(gpio_base);
 
     gpio_free(GPIO_CS);
     gpio_free(GPIO_CLK);
-    for (int i = GPIO_DATA_START; i <= GPIO_DATA_END; ++i) {
+    for (i = GPIO_DATA_START; i <= GPIO_DATA_END; ++i) {
         gpio_free(i);
     }
 
