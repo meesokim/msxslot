@@ -1,14 +1,5 @@
 obj-m := msxbus.o
 KDIR := /lib/modules/$(shell uname -r)/build
-
-# Specify kernel source directory for cross compilation
-KERNEL_SRC := /usr/src/linux
-ARCH := arm
-CROSS_COMPILE := arm-linux-gnueabihf-
-
-# Add required kernel configurations
-ccflags-y := -DCONFIG_GPIO_SYSFS -DCONFIG_GPIOLIB
-
 DOCKER := sudo docker
 
 all:
