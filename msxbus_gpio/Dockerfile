@@ -5,8 +5,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 
 # Configure apt to use proxy
-RUN echo 'Acquire::http::Proxy "http://168.219.61.252:8080";' > /etc/apt/apt.conf.d/proxy.conf
-RUN echo 'Acquire::https::Proxy "http://168.219.61.252:8080";' >> /etc/apt/apt.conf.d/proxy.conf
 
 # Install required packages
 RUN apt-get update && apt-get install -y \
@@ -21,9 +19,6 @@ RUN apt-get update && apt-get install -y \
     binutils-arm-linux-gnueabihf \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-RUN git config --global http.proxy "http://168.219.61.252:8080"
-RUN git config --global http.sslVerify false
 
 # Set up build environment
 ENV ARCH=arm
