@@ -252,10 +252,22 @@ static dev_t msxbus_dev;
 static struct cdev msxbus_cdev;
 static struct class *msxbus_class;
 
+// Add near the top of the file
+#define DEV_CLASS_MODE ((umode_t)(S_IRUGO|S_IWUGO))
+
+// Add before msxbus_init
+static char *msxbus_devnode(struct device *dev, umode_t *mode)
+{
+    if (mode)
+        *mode = DEV_CLASS_MODE;
+    return NULL;
+}
+
 // Modify msxbus_init function
 static int __init msxbus_init(void) {
     int ret;
     int i;
+    struct device *device;
 
     gpio_base = ioremap(GPIO_BASE, GPIO_SIZE);
     if (!gpio_base) {
@@ -293,9 +305,11 @@ static int __init msxbus_init(void) {
         iounmap(gpio_base);
         return PTR_ERR(msxbus_class);
     }
+    msxbus_class->devnode = msxbus_devnode;
 
     // Create device node
-    if (IS_ERR(device_create(msxbus_class, NULL, msxbus_dev, NULL, "msxbus"))) {
+    device = device_create(msxbus_class, NULL, msxbus_dev, NULL, "msxbus");
+    if (IS_ERR(device)) {
         pr_err("msxbus: failed to create device\n");
         class_destroy(msxbus_class);
         cdev_del(&msxbus_cdev);
