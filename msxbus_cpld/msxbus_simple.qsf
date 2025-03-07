@@ -157,3 +157,4 @@ set_global_assignment -name VERILOG_FILE msxbus_simple.v
 set_global_assignment -name SOURCE_FILE ./msxbus_simple.v
 set_global_assignment -name SOURCE_FILE ./sram_controller.vhd
 set_global_assignment -name SOURCE_FILE sram_controller.vhd
+set_global_assignment -name SOURCE_FILE ./msxbus_spi.v

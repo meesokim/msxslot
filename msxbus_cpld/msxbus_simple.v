@@ -112,36 +112,13 @@ localparam
     GET_DATA = 3'd6,
     WAIT_STATE = 3'd7,
     GET_STATUS = 3'd8,    // New state
-    COMPLETE = 4'd9;
-    CMD_MEM_READ = 4'd0;
-    CMD_MEM_WRITE = 4'd1;
-    CMD_IO_READ = 4'd2;
-    CMD_IO_WRITE = 4'd3;
-    CMD_RESET = 4'd5;
+    COMPLETE = 4'd9,
+    CMD_MEM_READ = 4'd0,
+    CMD_MEM_WRITE = 4'd1,
+    CMD_IO_READ = 4'd2,
+    CMD_IO_WRITE = 4'd3,
+    CMD_RESET = 4'd5,
     CMD_STATUS = 4'd8;
-
-initial begin
-    state = IDLE;
-    SLTSL1 = 1'b1;
-    SLTSL2 = 1'b1;
-    SLTSL1_CS1 = 1'b1;
-    SLTSL1_CS2 = 1'b1;
-    SLTSL1_CS12 = 1'b1;
-    SLTSL2_CS1 = 1'b1;
-    SLTSL2_CS2 = 1'b1;
-    SLTSL2_CS12 = 1'b1;
-    CS1 = 1'b1;
-    CS2 = 1'b1;
-    CS12 = 1'b1;
-    WR = 1'b1;
-    RD = 1'b1;
-    MREQ = 1'b1;
-    IORQ = 1'b1;
-    RESET = 1'b1;
-    M1 = 1'b1;
-    rdata_drive = 1'b0;
-    data_drive = 1'b0;
-end
 
 // Add clock divider registers after other reg declarations
 reg [3:0] clk_divider;  // Divider counter for 3.579545MHz (50MHz/14)
