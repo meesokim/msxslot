@@ -42,6 +42,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
     uint8_t addr_low = addr & 0xFF;
     uint8_t addr_high = (addr >> 8) & 0xFF;
     uint8_t status;
+    uint8_t retry = 0xff;
 
     // Assert CS
     gpio_set_value(GPIO_CS, 0);
@@ -87,7 +88,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
                 gpio_set_value(GPIO_CLK, 1);
                 udelay(1);
                 if (status == 0xFF) break;
-            } while (1);
+            } while (retry--);
             if (!(cmd & 0x01)) {
                 gpio_set_value(GPIO_CLK, 0);
                 udelay(1);
