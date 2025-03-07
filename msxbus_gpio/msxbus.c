@@ -7,6 +7,8 @@
 #include <linux/io.h>
 
 #include <linux/ioctl.h>
+#include <linux/cdev.h>
+#include <linux/device.h>
 
 #define GPIO_BASE 0x3F200000
 #define GPIO_SIZE 0xB4
@@ -241,6 +243,16 @@ static const struct file_operations msxbus_fops = {
     .unlocked_ioctl = msxbus_ioctl,    // Add ioctl handler
 };
 
+// Add these at the top with other includes
+#include <linux/cdev.h>
+#include <linux/device.h>
+
+// Add these as global variables
+static dev_t msxbus_dev;
+static struct cdev msxbus_cdev;
+static struct class *msxbus_class;
+
+// Modify msxbus_init function
 static int __init msxbus_init(void) {
     int ret;
     int i;
@@ -251,11 +263,45 @@ static int __init msxbus_init(void) {
         return -ENOMEM;
     }
 
-    ret = register_chrdev(240, "msxbus", &msxbus_fops);
+    // Allocate character device region
+    ret = alloc_chrdev_region(&msxbus_dev, 0, 1, "msxbus");
     if (ret < 0) {
-        pr_err("msxbus: failed to register character device\n");
+        pr_err("msxbus: failed to allocate character device region\n");
         iounmap(gpio_base);
         return ret;
+    }
+
+    // Initialize character device
+    cdev_init(&msxbus_cdev, &msxbus_fops);
+    msxbus_cdev.owner = THIS_MODULE;
+
+    // Add character device to system
+    ret = cdev_add(&msxbus_cdev, msxbus_dev, 1);
+    if (ret < 0) {
+        pr_err("msxbus: failed to add character device\n");
+        unregister_chrdev_region(msxbus_dev, 1);
+        iounmap(gpio_base);
+        return ret;
+    }
+
+    // Create device class
+    msxbus_class = class_create(THIS_MODULE, "msxbus");
+    if (IS_ERR(msxbus_class)) {
+        pr_err("msxbus: failed to create device class\n");
+        cdev_del(&msxbus_cdev);
+        unregister_chrdev_region(msxbus_dev, 1);
+        iounmap(gpio_base);
+        return PTR_ERR(msxbus_class);
+    }
+
+    // Create device node
+    if (IS_ERR(device_create(msxbus_class, NULL, msxbus_dev, NULL, "msxbus"))) {
+        pr_err("msxbus: failed to create device\n");
+        class_destroy(msxbus_class);
+        cdev_del(&msxbus_cdev);
+        unregister_chrdev_region(msxbus_dev, 1);
+        iounmap(gpio_base);
+        return PTR_ERR(msxbus_class);
     }
 
     gpio_request(GPIO_CS, "msxbus_cs");
@@ -274,9 +320,14 @@ static int __init msxbus_init(void) {
     return 0;
 }
 
+// Modify msxbus_exit function
 static void __exit msxbus_exit(void) {
     int i;
-    unregister_chrdev(240, "msxbus");
+    
+    device_destroy(msxbus_class, msxbus_dev);
+    class_destroy(msxbus_class);
+    cdev_del(&msxbus_cdev);
+    unregister_chrdev_region(msxbus_dev, 1);
     iounmap(gpio_base);
 
     gpio_free(GPIO_CS);
