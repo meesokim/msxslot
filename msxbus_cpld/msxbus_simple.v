@@ -86,7 +86,7 @@ module msxbus_simple (
 reg [7:0] input_data;
 reg [7:0] rdata_out;
 reg [7:0] CMD;        // Added CMD register
-reg [2:0] state;
+reg [4:0] state;
 reg rdata_drive;
 
 // Add data_drive register declaration
@@ -192,9 +192,7 @@ always @(negedge PCLK or posedge CS) begin
 
             GET_ADDR_H: begin
                 ADDR[15:8] <= RDATA;
-                if (CMD[3:0] != 4'h5) begin
-                    state <= SET_CONTROL;
-                end
+                state <= SET_CONTROL;
             end
 
             SET_CONTROL: begin
@@ -238,10 +236,11 @@ always @(negedge PCLK or posedge CS) begin
                     delay_count <= delay_count - 1;
                 end
             end
+
             WAIT_STATE: begin
                 if (WAIT) begin
                     rdata_out <= 8'hFF; // ACK
-					if (CMD[0]) begin
+					if (!CMD[0]) begin
 	                    state <= GET_DATA;
 					end else begin
 	                    state <= COMPLETE;
