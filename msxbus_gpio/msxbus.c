@@ -28,15 +28,20 @@
 #define CMD_RESET       0x05
 #define CMD_STATUS      0x08
 
+# GPIO Registers
+#define GPSET0 0x1c
+#define GPCLR0 0x28
+#define GPLEV0 0x34
+
 static void __iomem *gpio_base;
 
 static inline void gpio_set_value8(uint8_t value) {
-    iowrite32(GPIO_DATA_MASK, gpio_base + 0x28);
-    iowrite32(value, gpio_base + 0x1c);
+    iowrite32(GPIO_DATA_MASK, gpio_base + GPCLR0);  
+    iowrite32(value, gpio_base + GPSET0);
 }
 
 static inline uint8_t gpio_get_value8(void) {
-    return (uint8_t)(ioread32(gpio_base + 0x34) & GPIO_DATA_MASK);
+    return (uint8_t)(ioread32(gpio_base + GPLEV0) & GPIO_DATA_MASK);
 }
 
 static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *read_data) {
