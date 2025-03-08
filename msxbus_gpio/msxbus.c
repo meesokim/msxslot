@@ -28,7 +28,7 @@
 #define CMD_RESET       0x05
 #define CMD_STATUS      0x08
 
-# GPIO Registers
+// GPIO Registers
 #define GPSET0 0x1c
 #define GPCLR0 0x28
 #define GPLEV0 0x34
