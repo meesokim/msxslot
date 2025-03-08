@@ -31,7 +31,8 @@
 static void __iomem *gpio_base;
 
 static inline void gpio_set_value8(uint8_t value) {
-    iowrite32((ioread32(gpio_base + 0x1C) & ~GPIO_DATA_MASK) | value, gpio_base + 0x1C);
+    iowrite32(GPIO_DATA_MASK, gpio_base + 0x28);
+    iowrite32(value, gpio_base + 0x1c);
 }
 
 static inline uint8_t gpio_get_value8(void) {
