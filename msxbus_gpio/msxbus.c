@@ -93,7 +93,6 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
                 udelay(1);
                 status = gpio_get_value8();
                 gpio_set_value(GPIO_CLK, 1);
-		udelay(1);
                 if (status == 0xFF) {
                     if (!(cmd & 0x01)) {
                         gpio_set_value(GPIO_CLK, 0);
@@ -111,6 +110,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
             udelay(1);
             *read_data = gpio_get_value8();
             gpio_set_value(GPIO_CLK, 1);
+            udelay(1);        
             break;
         default:
             break;
@@ -143,7 +143,7 @@ static ssize_t msxbus_read(struct file *file, char __user *buf, size_t len, loff
             if (copy_from_user(&addr, buf + 1, 2)) return -EFAULT;
             gpio_bit_bang(cmd, addr, 0, &data);
             if (copy_to_user(buf, &data, 1)) return -EFAULT;
-            return 1;
+            return data;
 
         case CMD_STATUS:
             gpio_bit_bang(CMD_STATUS, 0, 0, &data);
@@ -160,30 +160,32 @@ static ssize_t msxbus_read(struct file *file, char __user *buf, size_t len, loff
 }
 
 static ssize_t msxbus_write(struct file *file, const char __user *buf, size_t len, loff_t *offset) {
-    uint16_t addr;
-    uint8_t data;
-    uint8_t cmd;
+    struct {
+        uint8_t cmd;
+        uint16_t addr;
+        uint8_t data;
+    } val;
 
     if (len != 4) {
         return -EINVAL;
     }
 
-    if (copy_from_user(&cmd, buf, 1)) {
+    if (copy_from_user((char *)&val, buf, 4)) {
         return -EFAULT;
     }
 
-    if (cmd != CMD_MEM_WRITE && cmd != CMD_IO_WRITE) {
-        return -EINVAL;
-    }
+    // if (cmd != CMD_MEM_WRITE && cmd != CMD_IO_WRITE) {
+    //     return -EINVAL;
+    // }
 
-    if (copy_from_user(&addr, buf + 1, 2)) {
-        return -EFAULT;
-    }
-    if (copy_from_user(&data, buf + 3, 1)) {
-        return -EFAULT;
-    }
+    // if (copy_from_user(&addr, buf + 1, 2)) {
+    //     return -EFAULT;
+    // }
+    // if (copy_from_user(&data, buf + 3, 1)) {
+    //     return -EFAULT;
+    // }
 
-    gpio_bit_bang(cmd, addr, data, NULL);
+    gpio_bit_bang(val.cmd, val.addr, val.data, NULL);
     return 4;
 }
 
@@ -216,6 +218,7 @@ static long msxbus_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 return -EFAULT;
             gpio_bit_bang(cmd == MSXBUS_IOCMEMREAD ? CMD_MEM_READ : CMD_IO_READ,
                          xfer.addr, 0, &xfer.data);
+            ret = xfer.data;
             if (copy_to_user((void __user *)arg, &xfer, sizeof(xfer)))
                 return -EFAULT;
             break;
