@@ -19,11 +19,7 @@ BOARDFILE = RPMC
 
 ###################################################################
 # Setup your sources here
-SRCS = $(shell find . -name '*.sv') \
-  $(shell find . -name '*.v') \
-  $(shell find . -name '*.vhdl') \
-  $(shell find . -name '*.vhd') \
-  $(shell find . -name '*.qsys')
+SRCS = msxbus_simple.v
 
 ###################################################################
 # Main Targets

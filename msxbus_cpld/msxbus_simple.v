@@ -120,20 +120,18 @@ localparam
     CMD_RESET = 4'd5,
     CMD_STATUS = 4'd8;
 
-// Add clock divider registers after other reg declarations
-reg [3:0] clk_divider;  // Divider counter for 3.579545MHz (50MHz/14)
-reg mclk_out;           // Internal MCLK signal
-
+// External CLK input directly
+reg [7:0] clk_divider;
+reg mclk_out;
+// Clock divider using external CLK
 always @(posedge CLK) begin
-    if (clk_divider == 4'd13) begin  // Divide by 14 (50MHz/14 ≈ 3.571MHz)
-        clk_divider <= 4'd0;
+    if (clk_divider == 8'd13) begin  // Divide by 14 (50MHz/14 ≈ 3.571MHz)
+        clk_divider <= 8'd0;
         mclk_out <= ~mclk_out;
     end else begin
         clk_divider <= clk_divider + 1'b1;
     end
 end
-
-// Add MCLK output assignment after other assignments
 assign MCLK = mclk_out;
 
 // Modify always block to use only positive edge of CS
