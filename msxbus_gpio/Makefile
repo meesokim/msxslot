@@ -8,6 +8,8 @@ all:
 ioctl:
 	cc -o test_ioctl msxbus_ioctl_test.c
 
+gpio:
+	cc -o test_gpio msxbus_gpio_test.c
 rpi:
 	# Build the Docker image
 	$(DOCKER) build -t rpi-kernel-module .
