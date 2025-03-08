@@ -38,7 +38,7 @@ int main() {
     uint8_t buffer[16];
 
     // Read memory from 0x4000 to 0xBFFF
-    for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {
+    for (uint16_t addr = 0x4000; addr < 0x4100; addr += 16) {
         // Read 16 bytes
         for (int i = 0; i < 16; i++) {
             xfer.addr = addr + i;

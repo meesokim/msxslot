@@ -93,6 +93,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
                 udelay(1);
                 status = gpio_get_value8();
                 gpio_set_value(GPIO_CLK, 1);
+		udelay(1);
                 if (status == 0xFF) {
                     if (!(cmd & 0x01)) {
                         gpio_set_value(GPIO_CLK, 0);
@@ -110,7 +111,6 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
             udelay(1);
             *read_data = gpio_get_value8();
             gpio_set_value(GPIO_CLK, 1);
-            udelay(1);        
             break;
         default:
             break;

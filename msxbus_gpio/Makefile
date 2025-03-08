@@ -5,6 +5,9 @@ DOCKER := sudo docker
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
+ioctl:
+	cc -o test_ioctl msxbus_ioctl_test.c
+
 rpi:
 	# Build the Docker image
 	$(DOCKER) build -t rpi-kernel-module .
@@ -13,3 +16,4 @@ rpi:
 
 clean:
 	rm -f *.ko *.mod *.o *.mod.c .*.cmd Module.symvers modules.order
+
