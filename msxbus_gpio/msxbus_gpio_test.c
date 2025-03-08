@@ -122,6 +122,17 @@ int main() {
         return -1;
     }
 
+    // Set GPIO directions
+    #define GPFSEL0 0x00
+    #define GPFSEL1 0x04
+	             
+    // Set GPIO 0-7 (data pins) to output
+    *(gpio + GPFSEL0/4) = 0x09249249;  // Set GPIO 0-7 to output
+	                    
+    // Set GPIO 8-9 (CLK and CS) to output
+    *(gpio + GPFSEL1/4) &= ~((7 << 24) | (7 << 27));  // Clear bits
+    *(gpio + GPFSEL1/4) |= (1 << 24) | (1 << 27);     // Set to output
+						      //
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {
         for (int i = 0; i < 16; i++) {
