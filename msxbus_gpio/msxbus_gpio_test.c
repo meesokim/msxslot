@@ -24,82 +24,131 @@
 #define GPCLR0 0x28/4
 #define GPLEV0 0x34/4
 
+// Command definitions
 #define CMD_MEM_READ    0x00
+#define CMD_MEM_WRITE   0x01
+#define CMD_IO_READ     0x02
+#define CMD_IO_WRITE    0x03
+#define CMD_RESET       0x05
 #define CMD_STATUS      0x08
 
 static volatile uint32_t *gpio;
 
 #define udelay usleep
 
-void gpio_set_value(int pin, int value) {
-    if (value)
-        *(gpio + GPSET0) = 1 << pin;
-    else
-        *(gpio + GPCLR0) = 1 << pin;
-}
+// void gpio_set_value(int pin, int value) {
+//     if (value)
+//         *(gpio + GPSET0) = 1 << pin;
+//     else
+//         *(gpio + GPCLR0) = 1 << pin;
+// }
 
 void gpio_set_value8(uint8_t value) {
     // Set GPIO 0-7 to output
     *(gpio + GPSEL0) = 0x09249249;
     *(gpio + GPCLR0) = GPIO_DATA_MASK;
     *(gpio + GPSET0) = value;
+    *(gpio + GPCLR0) = 1 << GPIO_CLK;
+    *(gpio + GPSET0) = 1 << GPIO_CLK;
 }
 
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
+    uint8_t ret;
     *(gpio + GPSEL0) = 0x09200000;
-    return (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK);
+    *(gpio + GPCLR0) = 1 << GPIO_CLK;
+    ret = (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK);
+    *(gpio + GPSET0) = 1 << GPIO_CLK;
+    return ret;
 }
 
-uint8_t msxbus_mem_read(uint16_t addr) {
-    uint8_t data = 0;
+static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *read_data) {
+    uint8_t addr_low = addr & 0xFF;
+    uint8_t addr_high = (addr >> 8) & 0xFF;
     uint8_t status;
-    int retry = 255;
+    uint8_t retry = 0xff;
 
     // Assert CS
-    gpio_set_value(GPIO_CLK, 1);
-    gpio_set_value(GPIO_CS, 0);
+    *(gpio + GPCLR0) = 1 << GPIO_CS;
 
     // Send command
-    gpio_set_value8(CMD_MEM_READ);
-    gpio_set_value(GPIO_CLK, 0);
-    usleep(1);
-    gpio_set_value(GPIO_CLK, 1);
-    usleep(1);
+    gpio_set_value8(cmd);
 
-    // Send address low byte
-    gpio_set_value8(addr & 0xFF);
-    gpio_set_value(GPIO_CLK, 0);
-    usleep(1);
-    gpio_set_value(GPIO_CLK, 1);
-    usleep(1);
-
-    // Send address high byte
-    gpio_set_value8((addr >> 8) & 0xFF);
-    gpio_set_value(GPIO_CLK, 0);
-    usleep(1);
-    gpio_set_value(GPIO_CLK, 1);
-    usleep(1);
-
-    // Wait for ACK and read data
-    while (retry--) {
-        gpio_set_value(GPIO_CLK, 0);
-        status = gpio_get_value8();
-        gpio_set_value(GPIO_CLK, 1);
-        if (status == 0xFF) {
-            gpio_set_value(GPIO_CLK, 0);
-            usleep(1);
-            data = gpio_get_value8();
-            gpio_set_value(GPIO_CLK, 1);
+    // For non-RESET and non-STATUS commands, send address
+    switch (cmd & 0xf) {
+        case CMD_MEM_READ:
+        case CMD_IO_READ:
+        case CMD_MEM_WRITE:
+        case CMD_IO_WRITE:
+            // Send low address byte
+            gpio_set_value8(addr_low);
+            // Send high address byte
+            gpio_set_value8(addr_high);
+            if (cmd & 0x01) {
+                gpio_set_value8(data);
+            } else {
+                gpio_get_value8();                
+            }
+            // Wait for acknowledgment (0xFF)
+            do {
+                status = gpio_get_value8();
+                if (status == 0xFF) {
+                    if (!(cmd & 0x01)) {
+                        *read_data = gpio_get_value8();
+                    }
+                }
+            } while (retry--);
             break;
-        }
-        usleep(1);
+        case CMD_STATUS:
+            *read_data = gpio_get_value8();
+            break;
+        default:
+            break;
     }
-    
+
     // Deassert CS
-    gpio_set_value(GPIO_CLK, 1);
-    gpio_set_value(GPIO_CS, 1);
-    usleep(1);
+    *(gpio + GPSET0) = 1 << GPIO_CS | 1 << GPIO_CLK;
+}
+
+
+uint8_t msxbus_mem_read(uint16_t addr) {
+    uint8_t data = 0, status;
+    int retry = 255;
+    uint8_t cmd = CMD_MEM_READ;
+    // Assert CS
+    *(gpio + GPCLR0) = 1 << GPIO_CS;
+
+    // Send command
+    gpio_set_value8(cmd);
+
+    // For non-RESET and non-STATUS commands, send address
+    switch (cmd) {
+        case CMD_MEM_READ:
+        case CMD_IO_READ:
+            // Send low address byte
+            gpio_set_value8(addr);
+            // Send high address byte
+            gpio_set_value8(addr >> 8);
+            gpio_get_value8();                
+            // Wait for acknowledgment (0xFF)
+            do {
+                status = gpio_get_value8();
+                if (status == 0xFF) {
+                    if (!(cmd & 0x01)) {
+                        data = gpio_get_value8();
+                    }
+                }
+            } while (retry--);
+            break;
+        case CMD_STATUS:
+            data = gpio_get_value8();
+            break;
+        default:
+            break;
+    }
+
+    // Deassert CS
+    *(gpio + GPSET0) = 1 << GPIO_CS | 1 << GPIO_CLK;
 
     return data;
 }
@@ -132,9 +181,7 @@ int main() {
 	             
     // Set GPIO 0-9 (data pins, CLK, CS) to output
     *(gpio + GPFSEL0) = 0x09249249;  // Set GPIO 0-7 to output
-    gpio_set_value(GPIO_CS, 0);
-    gpio_set_value(GPIO_CLK, 1);
-    gpio_set_value(GPIO_CS, 1);
+    *(gpio + GPSET0) = 1 << GPIO_CS | 1 << GPIO_CLK;
 
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {
