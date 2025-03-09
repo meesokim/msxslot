@@ -87,6 +87,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
                 gpio_set_value8(data);
             }
             // Wait for acknowledgment (0xFF)
+            status = gpio_get_value8();
             do {
                 status = gpio_get_value8();
                 if (status == 0xFF) {
