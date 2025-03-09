@@ -2,8 +2,14 @@ obj-m := msxbus.o
 KDIR := /lib/modules/$(shell uname -r)/build
 DOCKER := sudo docker
 
-all:
+all: compile insmod
+
+compile:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
+
+insmod:
+	sudo rmmod msxbus
+	sudo insmod msxbus.ko
 
 ioctl:
 	cc -o test_ioctl msxbus_ioctl_test.c

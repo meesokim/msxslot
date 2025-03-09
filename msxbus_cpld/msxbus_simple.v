@@ -202,8 +202,10 @@ always @(negedge PCLK or posedge CS) begin
                 M1 <= CMD[7];
                 // Memory access signals
                 if (!CMD[1]) begin  // If MREQ is active
-                    SLTSL1 <= !CMD[4];
-                    SLTSL2 <= CMD[4];
+                    if (!CMD[5]) begin // If NO_SLTSL
+                        SLTSL1 <= !CMD[4];
+                        SLTSL2 <= CMD[4];
+                    end
                     if (!CMD[4]) begin  // SLTSL1 active
                         SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
                         SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;

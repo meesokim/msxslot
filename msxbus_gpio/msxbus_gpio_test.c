@@ -29,6 +29,8 @@
 
 static volatile uint32_t *gpio;
 
+#define udelay usleep
+
 void gpio_set_value(int pin, int value) {
     if (value)
         *(gpio + GPSET0) = 1 << pin;
