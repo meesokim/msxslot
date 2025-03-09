@@ -15,10 +15,10 @@
 
 #define GPIO_DATA_MASK 0xFF
 
-#define GPIO_CS 14
-#define GPIO_CLK 13
-#define GPIO_DATA_START 5
-#define GPIO_DATA_END 12
+#define GPIO_CS 9
+#define GPIO_CLK 8
+#define GPIO_DATA_START 0
+#define GPIO_DATA_END 7
 
 // Command definitions
 #define CMD_MEM_READ    0x01
