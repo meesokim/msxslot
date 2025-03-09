@@ -45,7 +45,7 @@ void gpio_set_value8(uint8_t value) {
 
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
-    *(gpio + GPSEL0) = 0x0;
+    *(gpio + GPSEL0) = 0x09200000;
     return (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK);
 }
 
@@ -131,13 +131,9 @@ int main() {
 
 
 	             
-    // Set GPIO 0-7 (data pins) to output
+    // Set GPIO 0-9 (data pins, CLK, CS) to output
     *(gpio + GPFSEL0) = 0x09249249;  // Set GPIO 0-7 to output
-	                    
-    // Set GPIO 8-9 (CLK and CS) to output
-    *(gpio + GPFSEL1) &= ~((7 << 24) | (7 << 27));  // Clear bits
-    *(gpio + GPFSEL1) |= (1 << 24) | (1 << 27);     // Set to output
-						      //
+	                    						      //
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {
         for (int i = 0; i < 16; i++) {
