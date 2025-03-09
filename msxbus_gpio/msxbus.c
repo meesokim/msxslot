@@ -15,10 +15,10 @@
 
 #define GPIO_DATA_MASK 0xFF
 
-#define GPIO_CS 9
-#define GPIO_CLK 8
-#define GPIO_DATA_START 0
-#define GPIO_DATA_END 7
+#define GPIO_CS 14
+#define GPIO_CLK 13
+#define GPIO_DATA_START 5
+#define GPIO_DATA_END 12
 
 // Command definitions
 #define CMD_MEM_READ    0x01
@@ -36,12 +36,12 @@
 static void __iomem *gpio_base;
 
 static inline void gpio_set_value8(uint8_t value) {
-    iowrite32(GPIO_DATA_MASK, gpio_base + GPCLR0);  
-    iowrite32(value, gpio_base + GPSET0);
+    iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPCLR0);  
+    iowrite32(value << GPIO_DATA_START, gpio_base + GPSET0);
 }
 
 static inline uint8_t gpio_get_value8(void) {
-    return (uint8_t)(ioread32(gpio_base + GPLEV0) & GPIO_DATA_MASK);
+    return (uint8_t)((ioread32(gpio_base + GPLEV0) >> GPIO_DATA_START) & GPIO_DATA_MASK);
 }
 
 static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *read_data) {
@@ -339,7 +339,7 @@ static int __init msxbus_init(void) {
     }
 
     gpio_direction_output(GPIO_CS, 1);
-    gpio_direction_output(GPIO_CLK, 0);
+    gpio_direction_output(GPIO_CLK, 1);
     for ( i = GPIO_DATA_START; i <= GPIO_DATA_END; ++i) {
         gpio_direction_output(i, 0);
     }
