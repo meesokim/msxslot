@@ -13,7 +13,7 @@ else
 	ZEMMIX_EXT=zxl
 	LIBINFO=libinfo
 	FLAGS = -fpermissive
-	LDFLAGS=
+	LDFLAGS=-ldl
 endif
 FLAGS += -fPIC -Iinclude -I.
 CXXFLAGS = -fpermissive
@@ -26,10 +26,10 @@ OBJS = $(TARGET).o $(COBJS)
 all: $(TARGET).$(ZEMMIX_EXT) example $(LIBINFO)
 
 example: example.o zmx.o 
-	$(CXX) $(FLAGS) $(LDFLAGS) -o $@ $^ 
+	$(CXX) $(FLAGS) -o $@ $^ $(LDFLAGS)
 
 libinfo: libinfo.o
-	$(CC) $(FLAGS) -o $@ $^  -g
+	$(CC) $(FLAGS) -o $@ $^  -g $(LDFLAGS)
 
 %.o: %.cc 
 	$(CXX) $(FLAGS) $(CXXFLAGS) -c -o $@ $^
@@ -39,7 +39,6 @@ libinfo: libinfo.o
 
 
 $(TARGET).$(ZEMMIX_EXT): $(OBJS)
-	# (CXX)
 	$(CXX) $(FLAGS) $(DEBUGFLAGS) -o $(TARGET).$(ZEMMIX_EXT) $(OBJS) $(LDFLAGS)
 
 clean:

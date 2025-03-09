@@ -55,11 +55,18 @@ int main(int argc, char **argv)
         init((char*)"sdcard");
     if (read)
     {
-        uint8_t buffer[16];
+        uint8_t buffer[16], c = 0, b;
         for (uint16_t addr = 0x4000; addr < 0x4100; addr += 16) {
             // Read 16 bytes
             for (int i = 0; i < 16; i++) {
-                buffer[i] = read(RD_SLTSL1, addr + i);
+                c = 0;
+		uint8_t b = read(RD_SLTSL1, addr + i);
+		for (int j = 0; j < 10; j++)
+                   if (b != read(RD_SLTSL1, addr + i))
+			c++;
+		if (c > 0)
+		   exit(0);
+		buffer[i] = b;
             }
             print_memory_dump(addr, buffer, 16);
         }

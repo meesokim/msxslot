@@ -38,6 +38,24 @@
 
 static void __iomem *gpio_base;
 
+#define GPIO_CLK_0 iowrite32(1 << GPIO_CLK, gpio_base + GPCLR0)
+#define GPIO_CLK_1 iowrite32(1 << GPIO_CLK, gpio_base + GPSET0)
+
+inline void clk_pulse() {
+    iowrite32(1 << GPIO_CLK, gpio_base + GPCLR0);
+    iowrite32(1 << GPIO_CLK, gpio_base + GPSET0);
+}
+
+inline void assert_cs() {
+    iowrite32(1 << GPIO_CLK, gpio_base + GPSET0);
+    iowrite32(1 << GPIO_CS, gpio_base + GPCLR0);
+}
+
+inline void assert_cs() {
+    iowrite32(1 << GPIO_CLK, gpio_base + GPSET0);
+    iowrite32(1 << GPIO_CS, gpio_base + GPSET0);
+}
+
 static inline void gpio_set_value8(uint8_t value) {
     iowrite32(OUTPUT_DIR, gpio_base + GPSEL0);
     iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPCLR0);  
@@ -45,6 +63,7 @@ static inline void gpio_set_value8(uint8_t value) {
 }
 
 static inline uint8_t gpio_get_value8(void) {
+    //iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPSET0);
     iowrite32(INPUT_DIR, gpio_base + GPSEL0);
     return (uint8_t)((ioread32(gpio_base + GPLEV0) >> GPIO_DATA_START) & GPIO_DATA_MASK);
 }
@@ -53,18 +72,14 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
     uint8_t addr_low = addr & 0xFF;
     uint8_t addr_high = (addr >> 8) & 0xFF;
     uint8_t status;
-    uint8_t retry = 0xff;
+    uint8_t retry = 0x5;
 
     // Assert CS
-    gpio_set_value(GPIO_CLK, 1);
-    gpio_set_value(GPIO_CS, 0);
+    assert_cs();
 
     // Send command
     gpio_set_value8(cmd);
-    gpio_set_value(GPIO_CLK, 0);
-    udelay(1);
-    gpio_set_value(GPIO_CLK, 1);
-    udelay(1);
+    clk_pulse();
 
     // For non-RESET and non-STATUS commands, send address
     switch (cmd & 0xf) {
@@ -74,40 +89,28 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
         case CMD_IO_WRITE:
             // Send low address byte
             gpio_set_value8(addr_low);
-            gpio_set_value(GPIO_CLK, 0);
-            udelay(1);
-            gpio_set_value(GPIO_CLK, 1);
-            udelay(0);
+	    clk_pulse();
 
             // Send high address byte
             gpio_set_value8(addr_high);
-            gpio_set_value(GPIO_CLK, 0);
-            udelay(1);
-            gpio_set_value(GPIO_CLK, 1);
-            udelay(0);
+	    clk_pulse();
             if (cmd & 0x01) {
                 gpio_set_value8(data);
-                gpio_set_value(GPIO_CLK, 0);
-                udelay(1);
-                gpio_set_value(GPIO_CLK, 1);                
+		clk_pulse();
             }
-            udelay(10);
             // Wait for acknowledgment (0xFF)
             do {
-                gpio_set_value(GPIO_CLK, 0);
-                udelay(1);
+                GPIO_CLK_0;
                 status = gpio_get_value8();
-                gpio_set_value(GPIO_CLK, 1);
+                GPIO_CLK_1;
                 if (status == 0xFF) {
                     if (!(cmd & 0x01)) {
-                        gpio_set_value(GPIO_CLK, 0);
-                        udelay(1);
+			GPIO_CLK_0;
                         *read_data = gpio_get_value8();
-                        gpio_set_value(GPIO_CLK, 1);
-                        udelay(1);
+			GPIO_CLK_1;
                     }
+		    break;
                 }
-                udelay(0);
             } while (retry--);
             break;
         case CMD_STATUS:
@@ -122,9 +125,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
     }
 
     // Deassert CS
-    gpio_set_value(GPIO_CLK, 1);
-    gpio_set_value(GPIO_CS, 1);
-    udelay(0);
+    deassert_cs();
 }
 
 static ssize_t msxbus_read(struct file *file, char __user *buf, size_t len, loff_t *offset) {
@@ -213,14 +214,13 @@ static long msxbus_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct msxbus_transfer xfer;
     uint8_t status;
-    int ret = 0;
+    int ret = sizeof(xfer);
 
     switch (cmd) {
         case MSXBUS_IOCREAD:
             if (copy_from_user(&xfer, (void __user *)arg, sizeof(xfer)))
                 return -EFAULT;
             gpio_bit_bang(xfer.cmd, xfer.addr, 0, &xfer.data);
-            ret = sizeof(xfer);
             if (copy_to_user((void __user *)arg, &xfer, sizeof(xfer)))
                 return -EFAULT;
             break;
