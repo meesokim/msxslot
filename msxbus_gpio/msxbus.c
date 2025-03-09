@@ -62,8 +62,6 @@ static inline uint8_t gpio_get_value8(void) {
 }
 
 static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *read_data) {
-    uint8_t addr_low = addr & 0xFF;
-    uint8_t addr_high = (addr >> 8) & 0xFF;
     uint8_t status;
     uint8_t retry = 0x5;
 
@@ -80,14 +78,15 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
         case CMD_MEM_WRITE:
         case CMD_IO_WRITE:
             // Send low address byte
-            gpio_set_value8(addr_low);
+            gpio_set_value8(addr & 0xFF);
             // Send high address byte
-            gpio_set_value8(addr_high);
+            gpio_set_value8((addr >> 8) & 0xFF);
             if (cmd & 0x01) {
                 gpio_set_value8(data);
+            } else {
+                status = gpio_get_value8();
             }
             // Wait for acknowledgment (0xFF)
-            status = gpio_get_value8();
             do {
                 status = gpio_get_value8();
                 if (status == 0xFF) {
@@ -105,73 +104,6 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
             break;
     }
     GPIO_CS_1;
-}
-
-static ssize_t msxbus_read(struct file *file, char __user *buf, size_t len, loff_t *offset) {
-    uint16_t addr;
-    uint8_t data;
-    uint8_t cmd;
-
-    if (len < 1) {
-        return -EINVAL;
-    }
-
-    // Get command type from user
-    if (copy_from_user(&cmd, buf, 1)) {
-        return -EFAULT;
-    }
-
-    switch (cmd) {
-        case CMD_MEM_READ:
-        case CMD_IO_READ:
-            if (len != 3) return -EINVAL;
-            if (copy_from_user(&addr, buf + 1, 2)) return -EFAULT;
-            gpio_bit_bang(cmd, addr, 0, &data);
-            if (copy_to_user(buf, &data, 1)) return -EFAULT;
-            return data;
-
-        case CMD_STATUS:
-            gpio_bit_bang(CMD_STATUS, 0, 0, &data);
-            if (copy_to_user(buf, &data, 1)) return -EFAULT;
-            return 1;
-
-        case CMD_RESET:
-            gpio_bit_bang(CMD_RESET, 0, 0, NULL);
-            return 0;
-
-        default:
-            return -EINVAL;
-    }
-}
-
-static ssize_t msxbus_write(struct file *file, const char __user *buf, size_t len, loff_t *offset) {
-    struct {
-        uint8_t cmd;
-        uint16_t addr;
-        uint8_t data;
-    } val;
-
-    if (len != 4) {
-        return -EINVAL;
-    }
-
-    if (copy_from_user((char *)&val, buf, 4)) {
-        return -EFAULT;
-    }
-
-    // if (cmd != CMD_MEM_WRITE && cmd != CMD_IO_WRITE) {
-    //     return -EINVAL;
-    // }
-
-    // if (copy_from_user(&addr, buf + 1, 2)) {
-    //     return -EFAULT;
-    // }
-    // if (copy_from_user(&data, buf + 3, 1)) {
-    //     return -EFAULT;
-    // }
-
-    gpio_bit_bang(val.cmd, val.addr, val.data, NULL);
-    return 4;
 }
 
 // Add these includes and definitions at the top
@@ -231,8 +163,8 @@ static long msxbus_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 // Modify file operations structure
 static const struct file_operations msxbus_fops = {
     .owner = THIS_MODULE,
-    .read = msxbus_read,
-    .write = msxbus_write,
+    // .read = msxbus_read,
+    // .write = msxbus_write,
     .unlocked_ioctl = msxbus_ioctl,    // Add ioctl handler
 };
 
