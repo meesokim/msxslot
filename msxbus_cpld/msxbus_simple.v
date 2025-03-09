@@ -218,10 +218,8 @@ always @(negedge PCLK or posedge CS) begin
                 // State transition and data direction
                 if (CMD[0]) begin  // Write operations
                     data_out <= RDATA;
-                    data_drive <= 1'b1;
-                end else begin
-                    data_drive <= 1'b0;
                 end
+                data_drive <= CMD[0];
                 rdata_drive <= 1'b1;
 				rdata_out <= 8'h00;
                 delay_count <= 2'b11;  // Initialize delay counter
@@ -259,7 +257,6 @@ always @(negedge PCLK or posedge CS) begin
 
             COMPLETE: begin
                 state <= IDLE;
-				RESET <= 1'b1;
             end
         endcase
     end

@@ -40,32 +40,25 @@ static void __iomem *gpio_base;
 
 #define GPIO_CLK_0 iowrite32(1 << GPIO_CLK, gpio_base + GPCLR0)
 #define GPIO_CLK_1 iowrite32(1 << GPIO_CLK, gpio_base + GPSET0)
-
-inline void clk_pulse() {
-    iowrite32(1 << GPIO_CLK, gpio_base + GPCLR0);
-    iowrite32(1 << GPIO_CLK, gpio_base + GPSET0);
-}
-
-inline void assert_cs() {
-    iowrite32(1 << GPIO_CLK, gpio_base + GPSET0);
-    iowrite32(1 << GPIO_CS, gpio_base + GPCLR0);
-}
-
-inline void assert_cs() {
-    iowrite32(1 << GPIO_CLK, gpio_base + GPSET0);
-    iowrite32(1 << GPIO_CS, gpio_base + GPSET0);
-}
+#define GPIO_CS_0 iowrite32(1 << GPIO_CS, gpio_base + GPCLR0)
+#define GPIO_CS_1 iowrite32(1 << GPIO_CS, gpio_base + GPSET0)
 
 static inline void gpio_set_value8(uint8_t value) {
     iowrite32(OUTPUT_DIR, gpio_base + GPSEL0);
     iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPCLR0);  
     iowrite32(value << GPIO_DATA_START, gpio_base + GPSET0);
+    GPIO_CLK_0;
+    GPIO_CLK_1;
 }
 
 static inline uint8_t gpio_get_value8(void) {
     //iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPSET0);
+    uint8_t ret;
+    GPIO_CLK_0;
     iowrite32(INPUT_DIR, gpio_base + GPSEL0);
-    return (uint8_t)((ioread32(gpio_base + GPLEV0) >> GPIO_DATA_START) & GPIO_DATA_MASK);
+    ret = (uint8_t)((ioread32(gpio_base + GPLEV0) >> GPIO_DATA_START) & GPIO_DATA_MASK);
+    GPIO_CLK_1;
+    return ret;
 }
 
 static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *read_data) {
@@ -75,11 +68,10 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
     uint8_t retry = 0x5;
 
     // Assert CS
-    assert_cs();
+    GPIO_CS_0;
 
     // Send command
     gpio_set_value8(cmd);
-    clk_pulse();
 
     // For non-RESET and non-STATUS commands, send address
     switch (cmd & 0xf) {
@@ -89,43 +81,29 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
         case CMD_IO_WRITE:
             // Send low address byte
             gpio_set_value8(addr_low);
-	    clk_pulse();
-
             // Send high address byte
             gpio_set_value8(addr_high);
-	    clk_pulse();
             if (cmd & 0x01) {
                 gpio_set_value8(data);
-		clk_pulse();
             }
             // Wait for acknowledgment (0xFF)
             do {
-                GPIO_CLK_0;
                 status = gpio_get_value8();
-                GPIO_CLK_1;
                 if (status == 0xFF) {
                     if (!(cmd & 0x01)) {
-			GPIO_CLK_0;
                         *read_data = gpio_get_value8();
-			GPIO_CLK_1;
                     }
-		    break;
+		            break;
                 }
-            } while (retry--);
+            } while (--retry);
             break;
         case CMD_STATUS:
-            gpio_set_value(GPIO_CLK, 0);
-            udelay(1);
             *read_data = gpio_get_value8();
-            gpio_set_value(GPIO_CLK, 1);
-            udelay(0);        
             break;
         default:
             break;
     }
-
-    // Deassert CS
-    deassert_cs();
+    GPIO_CS_1;
 }
 
 static ssize_t msxbus_read(struct file *file, char __user *buf, size_t len, loff_t *offset) {
