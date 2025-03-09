@@ -18,9 +18,11 @@
 #define GPIO_DATA_END 7
 
 #define GPSEL0 0x0
-#define GPSET0 0x1c
-#define GPCLR0 0x28
-#define GPLEV0 0x34
+#define GPFSEL0 0x00
+#define GPFSEL1 0x01
+#define GPSET0 0x1c/4
+#define GPCLR0 0x28/4
+#define GPLEV0 0x34/4
 
 #define CMD_MEM_READ    0x00
 #define CMD_STATUS      0x08
@@ -29,22 +31,22 @@ static volatile uint32_t *gpio;
 
 void gpio_set_value(int pin, int value) {
     if (value)
-        *(gpio + GPSET0/4) = 1 << pin;
+        *(gpio + GPSET0) = 1 << pin;
     else
-        *(gpio + GPCLR0/4) = 1 << pin;
+        *(gpio + GPCLR0) = 1 << pin;
 }
 
 void gpio_set_value8(uint8_t value) {
     // Set GPIO 0-7 to output
-    *(gpio + GPSEL0/4) = 0x09249249;
-    *(gpio + GPCLR0/4) = GPIO_DATA_MASK;
-    *(gpio + GPSET0/4) = value;
+    *(gpio + GPSEL0) = 0x09249249;
+    *(gpio + GPCLR0) = GPIO_DATA_MASK;
+    *(gpio + GPSET0) = value;
 }
 
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
-    *(gpio + GPSEL0/4) = 0x0;
-    return (uint8_t)(*(gpio + GPLEV0/4) & GPIO_DATA_MASK);
+    *(gpio + GPSEL0) = 0x0;
+    return (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK);
 }
 
 uint8_t msxbus_mem_read(uint16_t addr) {
@@ -92,7 +94,7 @@ uint8_t msxbus_mem_read(uint16_t addr) {
         }
         usleep(1);
     }
-
+    
     // Deassert CS
     gpio_set_value(GPIO_CLK, 1);
     gpio_set_value(GPIO_CS, 1);
@@ -127,16 +129,14 @@ int main() {
         return -1;
     }
 
-    // Set GPIO directions
-    #define GPFSEL0 0x00
-    #define GPFSEL1 0x04
+
 	             
     // Set GPIO 0-7 (data pins) to output
-    *(gpio + GPFSEL0/4) = 0x09249249;  // Set GPIO 0-7 to output
+    *(gpio + GPFSEL0) = 0x09249249;  // Set GPIO 0-7 to output
 	                    
     // Set GPIO 8-9 (CLK and CS) to output
-    *(gpio + GPFSEL1/4) &= ~((7 << 24) | (7 << 27));  // Clear bits
-    *(gpio + GPFSEL1/4) |= (1 << 24) | (1 << 27);     // Set to output
+    *(gpio + GPFSEL1) &= ~((7 << 24) | (7 << 27));  // Clear bits
+    *(gpio + GPFSEL1) |= (1 << 24) | (1 << 27);     // Set to output
 						      //
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {
