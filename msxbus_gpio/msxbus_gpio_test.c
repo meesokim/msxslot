@@ -11,11 +11,13 @@
 #define PAGE_SIZE 4096
 #define BLOCK_SIZE 4096
 
+#define GPIO_DATA_MASK 0xFF
 #define GPIO_CS 9
 #define GPIO_CLK 8
 #define GPIO_DATA_START 0
 #define GPIO_DATA_END 7
 
+#define GPSEL0 0x0
 #define GPSET0 0x1c
 #define GPCLR0 0x28
 #define GPLEV0 0x34
@@ -33,13 +35,16 @@ void gpio_set_value(int pin, int value) {
 }
 
 void gpio_set_value8(uint8_t value) {
-    uint32_t mask = 0xFF;
-    *(gpio + GPCLR0/4) = mask;
+    // Set GPIO 0-7 to output
+    *(gpio + GPSEL0/4) = 0x09249249;
+    *(gpio + GPCLR0/4) = GPIO_DATA_MASK;
     *(gpio + GPSET0/4) = value;
 }
 
 uint8_t gpio_get_value8(void) {
-    return (uint8_t)(*(gpio + GPLEV0/4) & 0xFF);
+    // Set GPIO 0-7 to input
+    *(gpio + GPSEL0/4) = 0x0;
+    return (uint8_t)(*(gpio + GPLEV0/4) & GPIO_DATA_MASK);
 }
 
 uint8_t msxbus_mem_read(uint16_t addr) {
