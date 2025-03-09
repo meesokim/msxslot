@@ -20,7 +20,7 @@
 #define WR_MEM    0x21
 
 struct msxbus_transfer {
-    unit8_t cmd;
+    uint8_t cmd;
     uint16_t addr;
     uint8_t data;
 };

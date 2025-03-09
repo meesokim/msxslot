@@ -150,7 +150,6 @@ always @(negedge PCLK or posedge CS) begin
 		SLTSL2_CS1 = 1'b1;
 		SLTSL2_CS2 = 1'b1;
 		SLTSL2_CS12 = 1'b1;
-	    RESET = 1'b1;
 		M1 = 1'b1;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
@@ -172,8 +171,8 @@ always @(negedge PCLK or posedge CS) begin
                         state <= GET_ADDR_L;
                     end
                     CMD_RESET: begin // Reset
-                        RESET <= 1'b0;
-                        state <= COMPLETE;
+                        RESET <= CMD[4];
+                        state <= IDLE;
                     end
                     CMD_STATUS: begin // Get Status
                         state <= GET_STATUS;
