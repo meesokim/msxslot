@@ -82,7 +82,6 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     // Wait for ACK and read data
     while (retry--) {
         gpio_set_value(GPIO_CLK, 0);
-        usleep(1);
         status = gpio_get_value8();
         gpio_set_value(GPIO_CLK, 1);
         if (status == 0xFF) {
@@ -128,12 +127,13 @@ int main() {
         close(mem_fd);
         return -1;
     }
-
-
 	             
     // Set GPIO 0-9 (data pins, CLK, CS) to output
     *(gpio + GPFSEL0) = 0x09249249;  // Set GPIO 0-7 to output
-	                    						      //
+    gpio_set_value(GPIO_CS, 0);
+    gpio_set_value(GPIO_CLK, 1);
+    gpio_set_value(GPIO_CS, 1);
+
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {
         for (int i = 0; i < 16; i++) {
