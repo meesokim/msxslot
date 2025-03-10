@@ -82,14 +82,16 @@ set_location_assignment PIN_98 -to SLTSL1_CS1
 set_location_assignment PIN_99 -to SLTSL1_CS2
 set_location_assignment PIN_96 -to SLTSL1_CS12
 
-set_location_assignment PIN_47 -to MD[15]
-set_location_assignment PIN_42 -to MD[14]
-set_location_assignment PIN_18 -to MD[13]
-set_location_assignment PIN_17 -to MD[12]
-set_location_assignment PIN_43 -to MD[11]
-set_location_assignment PIN_16 -to MD[10]
-set_location_assignment PIN_28 -to CS
-set_location_assignment PIN_34 -to PCLK
+set_location_assignment PIN_17 -to CS
+set_location_assignment PIN_43 -to PCLK
+set_location_assignment PIN_16 -to RDATA[15]
+set_location_assignment PIN_15 -to RDATA[14]
+set_location_assignment PIN_41 -to RDATA[13]
+set_location_assignment PIN_40 -to RDATA[12]
+set_location_assignment PIN_33 -to RDATA[11]
+set_location_assignment PIN_27 -to RDATA[10]
+set_location_assignment PIN_28 -to RDATA[9]
+set_location_assignment PIN_34 -to RDATA[8]
 set_location_assignment PIN_35 -to RDATA[7]
 set_location_assignment PIN_39 -to RDATA[6]
 set_location_assignment PIN_38 -to RDATA[5]
