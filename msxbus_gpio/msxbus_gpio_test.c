@@ -122,7 +122,7 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     GPIO_CS_0;
 
     // Send command
-    gpio_set_value16(address);
+    gpio_set_value16(addr);
     // Send command and data
     gpio_set_value16(cmd << 8 | data);
     do {
