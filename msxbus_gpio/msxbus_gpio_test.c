@@ -93,7 +93,8 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
     uint8_t retry = 0xff;
 
     GPIO_CS_0;
-
+    GPIO_CLK_1;
+    
     // Send address
     gpio_set_value16(addr);
     // Send command and data
