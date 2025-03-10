@@ -117,7 +117,7 @@ void msxbus_reset(int value) {
     // Assert CS
     GPIO_CS_0;
     // Send command
-    gpio_set_value16(addr);
+    gpio_set_value16(0);
     // Send command and data
     gpio_set_value16(CMD_RESET << 8 | (value ? 1 : 0) << 4 );
 
