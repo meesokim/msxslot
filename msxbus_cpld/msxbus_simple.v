@@ -174,11 +174,11 @@ always @(negedge PCLK or posedge CS) begin
                             if (!CMD[4]) begin  // SLTSL1 active
                                 SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
                                 SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                                SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                                SLTSL1_CS12 <= SLTSL1_CS1 & SLTSL1_CS2;
                             end else begin     // SLTSL2 active
                                 SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
                                 SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                                SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                                SLTSL2_CS12 <= SLTSL2_CS1 & SLTSL2_CS2;
                             end
                         end
                     end

@@ -138,7 +138,7 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     gpio_set_value16(cmd << 8 | data);
     do {
         value = gpio_get_value16();
-        printf("%04x,", value);
+        //printf("%04x,", value);
         if (value & WAIT)
             break;
     } while(retry--);   
@@ -161,7 +161,8 @@ void msxbus_mem_write(uint16_t addr, uint8_t data) {
         value = gpio_get_value16();
         if (value & WAIT)
             break;
-    } while(retry--);    
+    } while(retry--); 
+    GPIO_CS_1; 
     return;
 }
 
