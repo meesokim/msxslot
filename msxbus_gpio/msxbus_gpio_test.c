@@ -125,6 +125,7 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     gpio_set_value16(addr);
     // Send command and data
     gpio_set_value16(cmd << 8 | data);
+    usleep(1);
     do {
         value = gpio_get_value16();
         if (value & WAIT)
