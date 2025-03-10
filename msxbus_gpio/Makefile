@@ -16,6 +16,10 @@ ioctl:
 
 gpio:
 	cc -o test_gpio msxbus_gpio_test.c
+
+spi:
+	cc -o test_spi msxbus_spi_test.c
+
 rpi:
 	# Build the Docker image
 	$(DOCKER) build -t rpi-kernel-module .
@@ -23,5 +27,5 @@ rpi:
 	$(DOCKER) run --rm -v $(PWD):/workdir rpi-kernel-module bash -c "make -C /usr/src/linux M=/workdir modules"
 
 clean:
-	rm -f *.ko *.mod *.o *.mod.c .*.cmd Module.symvers modules.order
+	rm -f *.ko *.mod *.o *.mod.c .*.cmd Module.symvers modules.order test_*
 

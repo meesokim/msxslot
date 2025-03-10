@@ -14,6 +14,8 @@
 #define CMD_RESET       0x05
 #define CMD_STATUS      0x08
 
+static int fd;
+
 void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
     printf("%04X: ", addr);
     for (int i = 0; i < len; i++) {
@@ -68,7 +70,6 @@ static uint8_t msx_get_status(int fd) {
 }
 
 int main() {
-    int fd;
     uint8_t buffer[16];
     uint8_t mode = 0;
     uint8_t bits = 8;

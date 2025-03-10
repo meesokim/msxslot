@@ -11,15 +11,15 @@
 #define PAGE_SIZE 4096
 #define BLOCK_SIZE 4096
 
-#define GPIO_DATA_MASK 0xFF
-#define GPIO_CS 9
-#define GPIO_CLK 8
+#define GPIO_DATA_MASK16 0xFFFF
+#define GPIO_DATA_MASK8 0xFF
+#define GPIO_CS 17
+#define GPIO_CLK 16
 #define GPIO_DATA_START 0
-#define GPIO_DATA_END 7
+#define GPIO_DATA_END 15
 
 #define GPSEL0 0x0
-#define GPFSEL0 0x00
-#define GPFSEL1 0x01
+#define GPSEL1 0x1
 #define GPSET0 0x1c/4
 #define GPCLR0 0x28/4
 #define GPLEV0 0x34/4
@@ -31,22 +31,36 @@
 #define CMD_IO_WRITE    0x03
 #define CMD_RESET       0x05
 #define CMD_STATUS      0x08
+#define WAIT            (1 << 15)
+
+#define OUTPUT_DIR0 0x09249249
+#define OUTPUT_DIR1 0x00049249
+#define INPUT_DIR0  0x00000000
+#define INPUT_DIR1  0x00048000
 
 static volatile uint32_t *gpio;
 
-#define udelay usleep
+#define GPIO_CLK_0 *(gpio + GPCLR0) = 1 << GPIO_CLK
+#define GPIO_CLK_1 *(gpio + GPSET0) = 1 << GPIO_CLK
+#define GPIO_CS_0  *(gpio + GPCLR0) = 1 << GPIO_CS
+#define GPIO_CS_1  *(gpio + GPSET0) = 1 << GPIO_CS
 
-// void gpio_set_value(int pin, int value) {
-//     if (value)
-//         *(gpio + GPSET0) = 1 << pin;
-//     else
-//         *(gpio + GPCLR0) = 1 << pin;
-// }
+#define udelay usleep
 
 void gpio_set_value8(uint8_t value) {
     // Set GPIO 0-7 to output
-    *(gpio + GPSEL0) = 0x09249249;
-    *(gpio + GPCLR0) = GPIO_DATA_MASK;
+    *(gpio + GPSEL0) = OUTPUT_DIR0;
+    *(gpio + GPCLR0) = GPIO_DATA_MASK8;
+    *(gpio + GPSET0) = value;
+    *(gpio + GPCLR0) = 1 << GPIO_CLK;
+    *(gpio + GPSET0) = 1 << GPIO_CLK;
+}
+
+void gpio_set_value16(uint16_t value) {
+    // Set GPIO 0-15 to output
+    *(gpio + GPSEL0) = OUTPUT_DIR0;
+    *(gpio + GPSEL1) = OUTPUT_DIR1;
+    *(gpio + GPCLR0) = GPIO_DATA_MASK16;
     *(gpio + GPSET0) = value;
     *(gpio + GPCLR0) = 1 << GPIO_CLK;
     *(gpio + GPSET0) = 1 << GPIO_CLK;
@@ -57,101 +71,87 @@ uint8_t gpio_get_value8(void) {
     uint8_t ret;
     *(gpio + GPSEL0) = 0x09200000;
     *(gpio + GPCLR0) = 1 << GPIO_CLK;
-    ret = (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK);
+    ret = (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK8);
     *(gpio + GPSET0) = 1 << GPIO_CLK;
     return ret;
 }
 
+uint16_t gpio_get_value16(void) {
+    // Set GPIO 0-15 to input
+    uint8_t ret;
+    *(gpio + GPSEL0) = INPUT_DIR0;
+    *(gpio + GPSEL1) = INPUT_DIR1;
+    *(gpio + GPCLR0) = 1 << GPIO_CLK;
+    ret = (uint16_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK16);
+    *(gpio + GPSET0) = 1 << GPIO_CLK;
+    return ret;
+}
+
+
 static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *read_data) {
-    uint8_t addr_low = addr & 0xFF;
-    uint8_t addr_high = (addr >> 8) & 0xFF;
-    uint8_t status;
+    uint8_t value;
     uint8_t retry = 0xff;
 
-    // Assert CS
-    *(gpio + GPCLR0) = 1 << GPIO_CS;
+    GPIO_CS_0;
 
-    // Send command
-    gpio_set_value8(cmd);
-
-    // For non-RESET and non-STATUS commands, send address
-    switch (cmd & 0xf) {
-        case CMD_MEM_READ:
-        case CMD_IO_READ:
-        case CMD_MEM_WRITE:
-        case CMD_IO_WRITE:
-            // Send low address byte
-            gpio_set_value8(addr_low);
-            // Send high address byte
-            gpio_set_value8(addr_high);
-            if (cmd & 0x01) {
-                gpio_set_value8(data);
-            } else {
-                gpio_get_value8();                
-            }
-            // Wait for acknowledgment (0xFF)
-            do {
-                status = gpio_get_value8();
-                if (status == 0xFF) {
-                    if (!(cmd & 0x01)) {
-                        *read_data = gpio_get_value8();
-                    }
-                }
-            } while (retry--);
-            break;
-        case CMD_STATUS:
-            *read_data = gpio_get_value8();
-            break;
-        default:
-            break;
+    // Send address
+    gpio_set_value16(addr);
+    // Send command and data
+    gpio_set_value16(cmd << 8 | data);
+    if (cmd <= CMD_IO_WRITE) {
+        do {
+            value = gpio_get_value16();
+            if (value & WAIT)
+                break;
+        } while(retry--);
+    } else if (cmd == CMD_STATUS) {
+        value = gpio_get_value16();
     }
-
-    // Deassert CS
-    *(gpio + GPSET0) = 1 << GPIO_CS | 1 << GPIO_CLK;
+    GPIO_CS_1;
+    if (read_data)
+        *read_data = value;
 }
 
 
 uint8_t msxbus_mem_read(uint16_t addr) {
-    uint8_t data = 0, status;
-    int retry = 255;
+    uint8_t data = 0;
+    uint16_t value = 0;
+    int retry = 5;
     uint8_t cmd = CMD_MEM_READ;
     // Assert CS
-    *(gpio + GPCLR0) = 1 << GPIO_CS;
+    GPIO_CS_0;
 
     // Send command
     gpio_set_value8(cmd);
-
-    // For non-RESET and non-STATUS commands, send address
-    switch (cmd) {
-        case CMD_MEM_READ:
-        case CMD_IO_READ:
-            // Send low address byte
-            gpio_set_value8(addr);
-            // Send high address byte
-            gpio_set_value8(addr >> 8);
-            gpio_get_value8();                
-            // Wait for acknowledgment (0xFF)
-            do {
-                status = gpio_get_value8();
-                if (status == 0xFF) {
-                    if (!(cmd & 0x01)) {
-                        data = gpio_get_value8();
-                    }
-                }
-            } while (retry--);
+    // Send command and data
+    gpio_set_value16(cmd << 8 | data);
+    do {
+        value = gpio_get_value16();
+        if (value & WAIT)
             break;
-        case CMD_STATUS:
-            data = gpio_get_value8();
-            break;
-        default:
-            break;
-    }
-
-    // Deassert CS
-    *(gpio + GPSET0) = 1 << GPIO_CS | 1 << GPIO_CLK;
-
-    return data;
+    } while(retry--);    
+    return (uint8_t) value;
 }
+
+void msxbus_mem_write(uint16_t addr, uint8_t data) {
+    uint16_t value = 0;
+    int retry = 5;
+    uint8_t cmd = CMD_MEM_READ;
+    // Assert CS
+    GPIO_CS_0;
+
+    // Send command
+    gpio_set_value8(cmd);
+    // Send command and data
+    gpio_set_value16(cmd << 8 | data);
+    do {
+        value = gpio_get_value16();
+        if (value & WAIT)
+            break;
+    } while(retry--);    
+    return;
+}
+
 
 void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
     printf("%04X: ", addr);
@@ -180,8 +180,9 @@ int main() {
     }
 	             
     // Set GPIO 0-9 (data pins, CLK, CS) to output
-    *(gpio + GPFSEL0) = 0x09249249;  // Set GPIO 0-7 to output
-    *(gpio + GPSET0) = 1 << GPIO_CS | 1 << GPIO_CLK;
+    *(gpio + GPSEL0) = OUTPUT_DIR0;  // Set GPIO 0-9 to output
+    *(gpio + GPSEL1) = OUTPUT_DIR1;  // Set GPIO 10-17 to output
+    *(gpio + GPSET0) = 1 << GPIO_CLK | 1 << GPIO_CS;
 
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {
