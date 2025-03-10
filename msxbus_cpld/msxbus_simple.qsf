@@ -159,6 +159,4 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to RD
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to RD
 set_global_assignment -name SOURCE_FILE ./msxbus_simple.v
 
-set_global_assignment -name SOURCE_FILE ./msxbus_spi.v
 set_global_assignment -name SOURCE_FILE msxbus_simple.v
-set_global_assignment -name SOURCE_FILE msxbus_spi.v

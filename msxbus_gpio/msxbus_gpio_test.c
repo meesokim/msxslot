@@ -94,7 +94,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
 
     GPIO_CS_0;
     GPIO_CLK_1;
-    
+
     // Send address
     gpio_set_value16(addr);
     // Send command and data
@@ -113,6 +113,16 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
         *read_data = value;
 }
 
+void msxbus_reset(int value) {
+    // Assert CS
+    GPIO_CS_0;
+    // Send command
+    gpio_set_value16(addr);
+    // Send command and data
+    gpio_set_value16(CMD_RESET << 8 | (value ? 1 : 0) << 4 );
+
+    GPIO_CS_1;
+}
 
 uint8_t msxbus_mem_read(uint16_t addr) {
     uint8_t data = 0;
@@ -126,7 +136,6 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     gpio_set_value16(addr);
     // Send command and data
     gpio_set_value16(cmd << 8 | data);
-    usleep(1);
     do {
         value = gpio_get_value16();
         if (value & WAIT)
@@ -186,6 +195,9 @@ int main() {
     *(gpio + GPSEL0) = OUTPUT_DIR0;  // Set GPIO 0-9 to output
     *(gpio + GPSEL1) = OUTPUT_DIR1;  // Set GPIO 10-17 to output
     *(gpio + GPSET0) = 1 << GPIO_CLK | 1 << GPIO_CS;
+
+    msxbus_reset(0);
+    msxbus_reset(1);
 
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {

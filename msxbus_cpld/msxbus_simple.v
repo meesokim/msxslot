@@ -185,10 +185,8 @@ always @(negedge PCLK or posedge CS) begin
                     // State transition and data direction
                     if (CMD[0]) begin  // Write operations
                         data_out <= RDATA[7:0];
-                        data_drive <= 1'b1;
                     end
-                    else
-                        data_drive <= 1'b0;
+                    data_drive <= CMD[0];
                     rdata_drive <= 1'b1;
                     rdata_out <= 16'h0000;
                     state <= GET_STATE_DATA;
