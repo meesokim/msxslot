@@ -34,7 +34,7 @@
 #define WAIT            (1 << 15)
 
 #define OUTPUT_DIR0 0x09249249
-#define OUTPUT_DIR1 0x00049249
+#define OUTPUT_DIR1 0x09249249
 #define INPUT_DIR0  0x00000000
 #define INPUT_DIR1  0x00048000
 
