@@ -13,11 +13,11 @@
 #define GPIO_BASE 0x3F200000
 #define GPIO_SIZE 0xB4
 
-#define GPIO_DATA_MASK 0xFF
-#define GPIO_CS 9
-#define GPIO_CLK 8
+#define GPIO_DATA_MASK 0xFFFF
+#define GPIO_CS 17
+#define GPIO_CLK 16
 #define GPIO_DATA_START 0
-#define GPIO_DATA_END 7
+#define GPIO_DATA_END 15
 
 // Command definitions
 #define CMD_MEM_READ    0x00
@@ -33,8 +33,10 @@
 #define GPCLR0 0x28
 #define GPLEV0 0x34
 
-#define OUTPUT_DIR  0x09249249
-#define INPUT_DIR   0x09200000
+#define OUTPUT_DIR0 0x09249249
+#define OUTPUT_DIR1 0x04049249
+#define INPUT_DIR0  0x09200000
+#define INPUT_DIR1  0x00048000
 
 static void __iomem *gpio_base;
 
@@ -44,74 +46,72 @@ static void __iomem *gpio_base;
 #define GPIO_CS_1 iowrite32(1 << GPIO_CS, gpio_base + GPSET0)
 
 static inline void gpio_set_value8(uint8_t value) {
-    iowrite32(OUTPUT_DIR, gpio_base + GPSEL0);
+    iowrite32(OUTPUT_DIR0, gpio_base + GPSEL0);
     iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPCLR0);  
     iowrite32(value << GPIO_DATA_START, gpio_base + GPSET0);
     GPIO_CLK_0;
     GPIO_CLK_1;
 }
 
+static inline void gpio_set_value16(uint16_t value) {
+    iowrite32(OUTPUT_DIR0, gpio_base + GPSEL0);
+    iowrite32(OUTPUT_DIR1, gpio_base + GPSEL1);
+    iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPCLR0);  
+    iowrite32(value << GPIO_DATA_START, gpio_base + GPSET0);
+    GPIO_CLK_0;
+    GPIO_CLK_1;
+}
+
+
 static inline uint8_t gpio_get_value8(void) {
     //iowrite32(GPIO_DATA_MASK << GPIO_DATA_START, gpio_base + GPSET0);
     uint8_t ret;
     GPIO_CLK_0;
-    iowrite32(INPUT_DIR, gpio_base + GPSEL0);
-    ret = (uint8_t)((ioread32(gpio_base + GPLEV0) >> GPIO_DATA_START) & GPIO_DATA_MASK);
+    iowrite32(INPUT_DIR0, gpio_base + GPSEL0);
+    ret = (uint8_t)((ioread32(gpio_base + GPLEV0) >> GPIO_DATA_START));
     GPIO_CLK_1;
     return ret;
 }
 
+static inline uint8_t gpio_get_value16(void) {
+    uint8_t ret;
+    GPIO_CLK_0;
+    iowrite32(INPUT_DIR0, gpio_base + GPSEL0);
+    iowrite32(INPUT_DIR1, gpio_base + GPSEL1);
+    ret = (uint16_t)((ioread32(gpio_base + GPLEV0) >> GPIO_DATA_START));
+    GPIO_CLK_1;
+    return ret;
+}
+
+
 static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *read_data) {
-    uint8_t status;
+    uint16_t value;
     uint8_t retry = 0x5;
 
     // Assert CS
     GPIO_CS_0;
-
-    // Send command
-    gpio_set_value8(cmd);
-
-    // For non-RESET and non-STATUS commands, send address
-    switch (cmd & 0xf) {
-        case CMD_MEM_READ:
-        case CMD_IO_READ:
-        case CMD_MEM_WRITE:
-        case CMD_IO_WRITE:
-            // Send low address byte
-            gpio_set_value8(addr & 0xFF);
-            // Send high address byte
-            gpio_set_value8((addr >> 8) & 0xFF);
-            if (cmd & 0x01) {
-                gpio_set_value8(data);
-            } else {
-                status = gpio_get_value8();
-            }
-            // Wait for acknowledgment (0xFF)
-            do {
-                status = gpio_get_value8();
-                if (status == 0xFF) {
-                    if (!(cmd & 0x01)) {
-                        *read_data = gpio_get_value8();
-                    }
-		            break;
-                }
-            } while (--retry);
-            break;
-        case CMD_STATUS:
-            *read_data = gpio_get_value8();
-            break;
-        default:
-            break;
+    gpio_set_value16(addr);
+    gpio_set_value16(cmd << 8 | data);
+    if (cmd < 4) {
+        do {
+            value = gpio_get_value16();
+            if (value & WAIT)
+                break;
+        } while(retry--);
+    } else if (cmd == CMD_STATUS) {
+        value = gpio_get_value16();
     }
     GPIO_CS_1;
+    if (read_data)
+        *read_data = value;
 }
 
 // Add these includes and definitions at the top
 #define MSXBUS_IOC_MAGIC 'M'
 #define MSXBUS_IOCREAD    _IOWR(MSXBUS_IOC_MAGIC, 0, struct msxbus_transfer)
 #define MSXBUS_IOCWRITE   _IOW(MSXBUS_IOC_MAGIC, 1, struct msxbus_transfer)
-#define MSXBUS_IOCRESET      _IO(MSXBUS_IOC_MAGIC, 5)
-#define MSXBUS_IOCSTATUS     _IOR(MSXBUS_IOC_MAGIC, 8, uint8_t)
+#define MSXBUS_IOCRESET   _IO(MSXBUS_IOC_MAGIC, 5)
+#define MSXBUS_IOCSTATUS  _IOR(MSXBUS_IOC_MAGIC, 8, uint8_t)
 
 // Add structure definition
 struct msxbus_transfer {
