@@ -119,7 +119,7 @@ void msxbus_reset(int value) {
     // Send command
     gpio_set_value16(0);
     // Send command and data
-    gpio_set_value16(CMD_RESET << 8 | (value ? 1 : 0) << 4 );
+    gpio_set_value16((CMD_RESET | (value ? 1 : 0) << 4 ) << 8);
 
     GPIO_CS_1;
 }
