@@ -171,24 +171,26 @@ always @(negedge PCLK or posedge CS) begin
                         if (!CMD[5]) begin // If NO_SLTSL
                             SLTSL1 <= !CMD[4];
                             SLTSL2 <= CMD[4];
-                        end
-                        if (!CMD[4]) begin  // SLTSL1 active
-                            SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                            SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                            SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
-                        end else begin     // SLTSL2 active
-                            SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                            SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                            SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                            if (!CMD[4]) begin  // SLTSL1 active
+                                SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+                                SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+                                SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                            end else begin     // SLTSL2 active
+                                SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+                                SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+                                SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                            end
                         end
                     end
                     // State transition and data direction
                     if (CMD[0]) begin  // Write operations
                         data_out <= RDATA[7:0];
                         data_drive <= 1'b1;
+                    else
+                        data_drive <= 1'b0;
                     end
                     rdata_drive <= 1'b1;
-                    rdata_out <= 8'h00;
+                    rdata_out <= 16'h0000;
                     state <= GET_STATE_DATA;
                 end
                 else begin
