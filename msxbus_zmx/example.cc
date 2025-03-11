@@ -31,21 +31,22 @@ int main(int argc, char **argv)
         printf("DLL open error!!\n");
         exit(1);
     }
-    init = (InitfnPtr)GetZemmixFunc(hDLL, (char*)MSXINIT);
-    if (!init)
-    {
-    #if ! defined(WIN32)
-        if ((error = dlerror()) != NULL)  {
-            fputs(error, stderr);
-            fputc('\n', stderr);
-            exit(1);
-        }    
-    #endif
-    }
+    // init = (InitfnPtr)GetZemmixFunc(hDLL, (char*)MSXINIT);
+    // if (!init)
+    // {
+    // #if ! defined(WIN32)
+    //     if ((error = dlerror()) != NULL)  {
+    //         fputs(error, stderr);
+    //         fputc('\n', stderr);
+    //         exit(1);
+    //     }    
+    // #endif
+    // }
     reset = (ResetfnPtr)GetZemmixFunc(hDLL, (char*)MSXRESET);
     read = (ReadfnPtr)GetZemmixFunc(hDLL, (char*)MSXREAD);
     write = (WritefnPtr)GetZemmixFunc(hDLL, (char*)MSXWRITE);
     status = (StatusfnPtr)GetZemmixFunc(hDLL, (char*)MSXSTATUS);
+    init = (InitfnPtr)GetZemmixFunc(hDLL, (char*)MSXINIT);
     printf("read:%llx\n", read);
     printf("write:%llx\n", write);
     printf("init:%llx\n", init);
@@ -53,6 +54,8 @@ int main(int argc, char **argv)
     printf("status:%llx\n", status);
     if (init)
         init((char*)"sdcard");
+    reset(0);
+    reset(1);
     if (read)
     {
         uint8_t buffer[16], c = 0, b;

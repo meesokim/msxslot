@@ -18,11 +18,11 @@
 #define GPIO_DATA_START 0
 #define GPIO_DATA_END 15
 
-#define GPSEL0 0x0
-#define GPSEL1 0x1
-#define GPSET0 0x1c/4
-#define GPCLR0 0x28/4
-#define GPLEV0 0x34/4
+#define GPSEL0 0
+#define GPSEL1 1
+#define GPSET0 7
+#define GPCLR0 10
+#define GPLEV0 13
 
 // Command definitions
 #define CMD_MEM_READ    0x00
@@ -58,19 +58,20 @@ void gpio_set_value8(uint8_t value) {
 
 void gpio_set_value16(uint16_t value) {
     // Set GPIO 0-15 to output
-    *(gpio + GPSEL0) = OUTPUT_DIR0;
-    *(gpio + GPSEL1) = OUTPUT_DIR1;
+    // *(gpio + GPSEL0) = OUTPUT_DIR0;
+    // *(gpio + GPSEL1) = OUTPUT_DIR1;
     *(gpio + GPCLR0) = GPIO_DATA_MASK16;
     *(gpio + GPSET0) = value;
     *(gpio + GPCLR0) = 1 << GPIO_CLK;
     *(gpio + GPSET0) = 1 << GPIO_CLK;
+    printf("w0x%04x\n", value);
 }
 
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
     uint8_t ret;
-    *(gpio + GPSEL0) = 0x09200000;
     *(gpio + GPCLR0) = 1 << GPIO_CLK;
+    *(gpio + GPSEL0) = 0x09200000;
     ret = (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK8);
     *(gpio + GPSET0) = 1 << GPIO_CLK;
     return ret;
@@ -78,12 +79,14 @@ uint8_t gpio_get_value8(void) {
 
 uint16_t gpio_get_value16(void) {
     // Set GPIO 0-15 to input
-    uint8_t ret;
+    uint16_t ret;
+    *(gpio + GPSET0) = 1 << GPIO_CLK;
+    *(gpio + GPCLR0) = 1 << GPIO_CLK;
     *(gpio + GPSEL0) = INPUT_DIR0;
     *(gpio + GPSEL1) = INPUT_DIR1;
-    *(gpio + GPCLR0) = 1 << GPIO_CLK;
-    ret = (uint16_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK16);
+    ret = (uint16_t)(*(gpio + GPLEV0));
     *(gpio + GPSET0) = 1 << GPIO_CLK;
+    printf("r0x%04x\n", ret);
     return ret;
 }
 
@@ -138,9 +141,10 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     gpio_set_value16(cmd << 8 | data);
     do {
         value = gpio_get_value16();
-        //printf("%04x,", value);
-        if (value & WAIT)
-            break;
+        printf("r0x%04x\n", value);
+        // //printf("%04x,", value);
+        // if (value & WAIT)
+        //     break;
     } while(retry--);   
     GPIO_CS_1; 
     return (uint8_t) value;
@@ -154,7 +158,7 @@ void msxbus_mem_write(uint16_t addr, uint8_t data) {
     GPIO_CS_0;
 
     // Send command
-    gpio_set_value8(cmd);
+    gpio_set_value16(addr);
     // Send command and data
     gpio_set_value16(cmd << 8 | data);
     do {
@@ -198,8 +202,8 @@ int main() {
     *(gpio + GPSEL1) = OUTPUT_DIR1;  // Set GPIO 10-17 to output
     *(gpio + GPSET0) = 1 << GPIO_CLK | 1 << GPIO_CS;
 
-    msxbus_reset(0);
-    msxbus_reset(1);
+    // msxbus_reset(0);
+    // msxbus_reset(1);
 
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0x4100; addr += 16) {

@@ -1,0 +1,162 @@
+# -------------------------------------------------------------------------- #
+#
+# Copyright (C) 1991-2013 Altera Corporation
+# Your use of Altera Corporation's design tools, logic functions 
+# and other software and tools, and its AMPP partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Altera Program License 
+# Subscription Agreement, Altera MegaCore Function License 
+# Agreement, or other applicable license agreement, including, 
+# without limitation, that your use is for the sole purpose of 
+# programming logic devices manufactured by Altera and sold by 
+# Altera or its authorized distributors.  Please refer to the 
+# applicable agreement for further details.
+#
+# -------------------------------------------------------------------------- #
+#
+# Quartus II 64-Bit
+# Version 13.1.0 Build 162 10/23/2013 SJ Web Edition
+# Date created = 19:35:26  January 29, 2017
+#
+# -------------------------------------------------------------------------- #
+#
+# Notes:
+#
+# 1) The default values for assignments are stored in the file:
+#		msxbus_simple_assignment_defaults.qdf
+#    If this file doesn't exist, see file:
+#		assignment_defaults.qdf
+#
+# 2) Altera recommends that you do not modify this file. This
+#    file is updated automatically by the Quartus II software
+#    and any changes you make may be lost or overwritten.
+#
+# -------------------------------------------------------------------------- #
+
+
+set_global_assignment -name FAMILY "MAX II"
+set_global_assignment -name DEVICE EPM240T100C5
+set_global_assignment -name TOP_LEVEL_ENTITY msxbus_simple
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:35:26  JANUARY 29, 2017"
+set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY reports
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name DEVICE_FILTER_PACKAGE TQFP
+set_global_assignment -name DEVICE_FILTER_PIN_COUNT 100
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR "-1"
+set_global_assignment -name POWER_EXT_SUPPLY_VOLTAGE_TO_REGULATOR 3.3V
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_location_assignment PIN_62 -to DATA[0]
+set_location_assignment PIN_61 -to DATA[1]
+set_location_assignment PIN_58 -to DATA[2]
+set_location_assignment PIN_57 -to DATA[3]
+set_location_assignment PIN_56 -to DATA[4]
+set_location_assignment PIN_55 -to DATA[5]
+set_location_assignment PIN_54 -to DATA[6]
+set_location_assignment PIN_53 -to DATA[7]
+# set_location_assignment PIN_37 -to a0
+# set_location_assignment PIN_36 -to cs
+set_location_assignment PIN_83 -to ADDR[15]
+set_location_assignment PIN_72 -to ADDR[14]
+set_location_assignment PIN_73 -to ADDR[13]
+set_location_assignment PIN_74 -to ADDR[12]
+set_location_assignment PIN_78 -to ADDR[11]
+set_location_assignment PIN_81 -to ADDR[10]
+set_location_assignment PIN_82 -to ADDR[9]
+set_location_assignment PIN_75 -to ADDR[8]
+set_location_assignment PIN_76 -to ADDR[7]
+set_location_assignment PIN_77 -to ADDR[6]
+set_location_assignment PIN_66 -to ADDR[5]
+set_location_assignment PIN_67 -to ADDR[4]
+set_location_assignment PIN_68 -to ADDR[3]
+set_location_assignment PIN_69 -to ADDR[2]
+set_location_assignment PIN_70 -to ADDR[1]
+set_location_assignment PIN_71 -to ADDR[0]
+
+set_location_assignment PIN_90 -to BUSDIR
+set_location_assignment PIN_98 -to SLTSL1_CS1
+set_location_assignment PIN_99 -to SLTSL1_CS2
+set_location_assignment PIN_96 -to SLTSL1_CS12
+
+set_location_assignment PIN_47 -to MD[15]
+set_location_assignment PIN_42 -to MD[14]
+set_location_assignment PIN_18 -to MD[13]
+set_location_assignment PIN_17 -to MD[12]
+set_location_assignment PIN_43 -to MD[11]
+set_location_assignment PIN_16 -to MD[10]
+set_location_assignment PIN_28 -to CS
+set_location_assignment PIN_34 -to PCLK
+set_location_assignment PIN_35 -to RDATA[7]
+set_location_assignment PIN_39 -to RDATA[6]
+set_location_assignment PIN_38 -to RDATA[5]
+set_location_assignment PIN_12 -to RDATA[4]
+set_location_assignment PIN_7 -to RDATA[3]
+set_location_assignment PIN_6 -to RDATA[2]
+set_location_assignment PIN_37 -to RDATA[1]
+set_location_assignment PIN_36 -to RDATA[0]
+
+set_location_assignment PIN_92 -to INT
+set_location_assignment PIN_87 -to IORQ
+set_location_assignment PIN_89 -to M1
+set_location_assignment PIN_88 -to MREQ
+set_location_assignment PIN_86 -to RD
+set_location_assignment PIN_84 -to RESET
+set_location_assignment PIN_97 -to SLTSL1
+set_location_assignment PIN_100 -to SLTSL2
+set_location_assignment PIN_50 -to SW[0]
+set_location_assignment PIN_49 -to SW[1]
+set_location_assignment PIN_51 -to SWOUT
+set_location_assignment PIN_52 -to MCLK
+set_location_assignment PIN_91 -to WAIT
+set_location_assignment PIN_85 -to WR
+set_location_assignment PIN_44 -to MCS
+# set_location_assignment PIN_29 -to rint
+# set_location_assignment PIN_21 -to rsw0
+# set_location_assignment PIN_20 -to rsw1
+# set_location_assignment PIN_26 -to rwait
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to DATA
+# set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to DATA
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to DATA
+set_instance_assignment -name ENABLE_BUS_HOLD_CIRCUITRY OFF -to DATA
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to ADDR
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to CS1
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to CS2
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to CS12
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SLTSL2
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to RD
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to WR
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to IORQ
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to MREQ
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SLTSL1
+# set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to IORQ
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ADDR
+# set_instance_assignment -name AUTO_GLOBAL_CLOCK ON -to CLK
+# set_instance_assignment -name FAST_INPUT_REGISTER ON -to DATA
+# set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ADDR
+# set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to MREQ
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to ADDR
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to WR
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to WR
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to WAIT
+set_location_assignment PIN_88 -to PSW0
+set_location_assignment PIN_89 -to PSW1
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to BUSDIR
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to CLK
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to CS1
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to CS2
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to CS12
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to IORQ
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to IORQ
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to INT
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to INT
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to RD
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to RD
+set_global_assignment -name SOURCE_FILE ./msxbus_simple.v
+
+set_global_assignment -name SOURCE_FILE ./msxbus_spi.v
+set_global_assignment -name SOURCE_FILE msxbus_simple.v
+set_global_assignment -name SOURCE_FILE msxbus_spi.v
