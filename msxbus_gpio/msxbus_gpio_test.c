@@ -70,6 +70,7 @@ void gpio_set_value16(uint16_t value) {
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
     uint8_t ret;
+    *(gpio + GPSEL0) = INPUT_DIR0;
     *(gpio + GPCLR0) = 1 << GPIO_CLK;
     *(gpio + GPSEL0) = 0x09200000;
     ret = (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK8);
@@ -118,6 +119,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
 
 void msxbus_reset(int value) {
     // Assert CS
+    GPIO_PCLK_1;
     GPIO_CS_0;
     // Send command
     gpio_set_value16(0);
@@ -133,12 +135,13 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     int retry = 5;
     uint8_t cmd = CMD_MEM_READ;
     // Assert CS
+    GPIO_PCLK_1;
     GPIO_CS_0;
 
     // Send command
     gpio_set_value16(addr);
     // Send command and data
-    gpio_set_value16(cmd << 8 | data);
+    gpio_set_value16(cmd << 8);
     do {
         value = gpio_get_value16();
         printf("r0x%04x\n", value);

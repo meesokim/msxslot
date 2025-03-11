@@ -88,6 +88,7 @@ reg [15:0] rdata_out;
 reg [7:0] CMD;        // Added CMD register
 reg [4:0] state;
 reg rdata_drive;
+reg [15:0] address_out;
 
 // Add data_drive register declaration
 reg [7:0] data_out;
@@ -153,12 +154,13 @@ always @(negedge PCLK or posedge CS) begin
     end else begin
         case (state)
             GET_ADDR: begin
-                ADDR[15:0] <= RDATA;
+                address_out <= RDATA;
                 state <= GET_CMD_CTRL;
             end
 
             GET_CMD_CTRL: begin
                 CMD <= RDATA[15:8];
+                ADDR <= address_out;
                 if (CMD[3:0] < 4) begin
                     // Common control signals
                     MREQ <= CMD[1];
@@ -207,7 +209,7 @@ always @(negedge PCLK or posedge CS) begin
             end
 
             GET_STATE_DATA: begin
-                rdata_out <= {WAIT, INT, SW, 4'b0, DATA};
+                rdata_out <= {WAIT, INT, SW, 4'b0, 8'h12};
                 if (WAIT) begin
                     state <= IDLE;
                 end
