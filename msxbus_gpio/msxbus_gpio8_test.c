@@ -145,8 +145,8 @@ int main() {
     msxbus_reset(1);
 	             
     // Set GPIO 0-9 (data pins, CLK, CS) to output
-    GPSEL0(0x09249249);  // Set GPIO 0-7 to output
-    GPSET0(CS | PCLK);
+    SEL0(0x09249249);  // Set GPIO 0-7 to output
+    SET0(CS | PCLK);
 
     // Read memory from 0x4000 to 0xBFFF
     for (uint16_t addr = 0x4000; addr < 0xC000; addr += 16) {

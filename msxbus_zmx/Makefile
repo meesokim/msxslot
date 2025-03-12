@@ -13,7 +13,7 @@ else
 	ZEMMIX_EXT=zxl
 	LIBINFO=libinfo
 	FLAGS = -fpermissive
-	LDFLAGS=-ldl  
+	LDFLAGS=-ldl  ../lib/libbcm2835.a
 endif
 FLAGS += -fPIC -Iinclude -I.
 CXXFLAGS = -fpermissive

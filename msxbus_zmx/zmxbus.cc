@@ -91,7 +91,7 @@ extern "C" {
         gpio_set_value8(addr);
         // Send high address byte
         gpio_set_value8(addr >> 8);
-        gpio_get_value8();                
+        gpio_get_value8();
         // Wait for acknowledgment (0xFF)
         do {
             status = gpio_get_value8();
@@ -110,7 +110,7 @@ extern "C" {
     
     EXPORT void msxwrite(int cmd, unsigned short addr, unsigned char value)
     {
-        uint8_t data = 0, status;
+        uint8_t status;
         int retry = 255;
         // Assert CS
         CLR0(CS);
@@ -120,7 +120,10 @@ extern "C" {
         gpio_set_value8(addr);
         // Send high address byte
         gpio_set_value8(addr >> 8);
-        gpio_get_value8();                
+        gpio_set_value8(value);
+        CLR0(0);
+        usleep(1);
+        SET0(0);
         // Wait for acknowledgment (0xFF)
         do {
             status = gpio_get_value8();
