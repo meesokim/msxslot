@@ -13,13 +13,13 @@ else
 	ZEMMIX_EXT=zxl
 	LIBINFO=libinfo
 	FLAGS = -fpermissive
-	LDFLAGS=-ldl -lbcm2835
+	LDFLAGS=-ldl  
 endif
 FLAGS += -fPIC -Iinclude -I.
 CXXFLAGS = -fpermissive
 SOURCES = $(shell find -maxdepth 1 -name "*.c")
 COBJS = $(shell echo $(SOURCES) | sed -r 's/\.s|\.c|\.cpp|.cc/\.o/g') 
-DEBUGFLAGS = -O0 -D _DEBUG -shared -lbcm2835
+DEBUGFLAGS = -O0 -D _DEBUG -shared ../lib/libbcm2835.a
 RELEASEFLAGS = libbcm2835.a -O2 -D DEBUG -combine -fwhole-program -shared 
 OBJS = $(TARGET).o $(COBJS)
 

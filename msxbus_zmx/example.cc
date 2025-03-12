@@ -47,11 +47,11 @@ int main(int argc, char **argv)
     write = (WritefnPtr)GetZemmixFunc(hDLL, (char*)MSXWRITE);
     status = (StatusfnPtr)GetZemmixFunc(hDLL, (char*)MSXSTATUS);
     init = (InitfnPtr)GetZemmixFunc(hDLL, (char*)MSXINIT);
-    printf("read:%llx\n", read);
-    printf("write:%llx\n", write);
-    printf("init:%llx\n", init);
-    printf("reset:%llx\n", reset);
-    printf("status:%llx\n", status);
+    printf("read:%llx\n", (long long unsigned int)read);
+    printf("write:%llx\n", (long long unsigned int)write);
+    printf("init:%llx\n", (long long unsigned int)init);
+    printf("reset:%llx\n", (long long unsigned int)reset);
+    printf("status:%llx\n", (long long unsigned int)status);
     if (init)
         init((char*)"sdcard");
     reset(0);

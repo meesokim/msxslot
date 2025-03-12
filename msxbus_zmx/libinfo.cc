@@ -12,11 +12,11 @@ int main(int argc, char **argv)
         exit(0);
     }
     auto library = dlopen(argv[1], RTLD_LAZY | RTLD_GLOBAL);
-    printf("%s(%x)\n", argv[1], library);
+    printf("%s(%lx)\n", argv[1], (long int)library);
     // const char * libname = "lib.so";
     struct link_map * map = nullptr;
     dlinfo(library, RTLD_DI_LINKMAP, &map);
-    printf("map:%x\n", map);
+    printf("map:%lx\n", (long int)map);
     if (!map)
         exit(1);
     Elf64_Sym * symtab = nullptr;

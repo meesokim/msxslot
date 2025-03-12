@@ -45,7 +45,7 @@ void gpio_set_value8(uint8_t value) {
     SEL0(0x09249249);
     CLR0(GPIO_DATA_MASK);
     SET0(value);
-    PULSE(PCLK);
+    PULSE0(PCLK);
 }
 
 uint8_t gpio_get_value8(void) {
@@ -66,7 +66,7 @@ extern "C" {
         SET0(CS);
     }
     
-    EXPORT void init(char *path) 
+    EXPORT int init(char *path) 
     {
         if (!bcm2835_init()) return -1;
         gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
@@ -76,6 +76,7 @@ extern "C" {
         // Set GPIO 0-9 (data pins, CLK, CS) to output
         SEL0(0x09249249);  // Set GPIO 0-7 to output
         SET0(CS | PCLK);
+	return 0;
     }
     
     EXPORT unsigned char msxread(int cmd, unsigned short addr) 
@@ -130,7 +131,7 @@ extern "C" {
         // Deassert CS
         SET0(CS);
     
-        return data;
+        return;
     }
     
     unsigned char msxstatus()

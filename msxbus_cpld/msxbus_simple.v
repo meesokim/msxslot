@@ -209,9 +209,7 @@ always @(negedge PCLK or posedge CS) begin
             end
 
             GET_STATE_DATA: begin
-                rdata_out <= {WAIT, INT, SW, 4'b0, 8'h12};
-                if (WAIT) begin
-                    state <= IDLE;
+                rdata_out <= {WAIT, INT, SW, 4'b00, DATA};
                 end
             end
 
