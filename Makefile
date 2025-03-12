@@ -136,3 +136,7 @@ program: $(OUTPUT)/$(PROJECT).sof
 
 program-pof: $(OUTPUT)/$(PROJECT).pof
 	$(QUARTUS_PGM) $(PGM_ARGS) -o "BVP;$(OUTPUT)/$(PROJECT).pof"
+
+docker:
+       sudo docker build -t fpga:quartus131 --build-arg DISPLAY="$(DISPLAY)" .
+       sudo docker run -it --rm -v $(PWD):/workdir fpga:quartus131 make -C /workdir
