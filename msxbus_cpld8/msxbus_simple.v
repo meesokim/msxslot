@@ -74,9 +74,6 @@ module msxbus_simple (
     output reg SLTSL2_CS1,    // New
     output reg SLTSL2_CS2,    // New
     output reg SLTSL2_CS12,   // New
-    output reg CS1,
-    output reg CS2,
-    output reg CS12,
     output MCLK, SWOUT, RFSH,
     output reg M1
 );
@@ -107,6 +104,7 @@ localparam
     GET_ADDR_L = 3'd2,
     GET_ADDR_H = 3'd3,
     SET_CONTROL = 3'd4,
+    SEND_DATA = 3'd5,
     GET_DATA = 3'd6,
     WAIT_STATE = 3'd7,
     GET_STATUS = 3'd8,    // New state
@@ -149,8 +147,10 @@ always @(negedge PCLK or posedge CS) begin
 		SLTSL2_CS2 = 1'b1;
 		SLTSL2_CS12 = 1'b1;
 		M1 = 1'b1;
+        RESET <= 1'b1;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
+        data_out <= 8'b11111111;
     end else begin
         case (state)
             GET_CMD: begin
@@ -160,16 +160,16 @@ always @(negedge PCLK or posedge CS) begin
                         state <= GET_ADDR_L;
                     end
                     CMD_MEM_WRITE: begin // Memory Write
-                        state <= GET_ADDR_L;
+                        state <= SEND_DATA;
                     end
                     CMD_IO_READ: begin // IO Read
                         state <= GET_ADDR_L;
                     end
                     CMD_IO_WRITE: begin // IO Write
-                        state <= GET_ADDR_L;
+                        state <= SEND_DATA;
                     end
                     CMD_RESET: begin // Reset
-                        RESET <= CMD[4];
+                        RESET <= 1'b0;
                         state <= IDLE;
                     end
                     CMD_STATUS: begin // Get Status
@@ -180,6 +180,12 @@ always @(negedge PCLK or posedge CS) begin
                 endcase
             end
 
+            SEND_DATA: begin
+                data_out <= RDATA;
+                data_drive <= CMD[0];    
+                state <= GET_ADDR_L;
+            end
+
             GET_ADDR_L: begin
                 ADDR[7:0] <= RDATA;
                 state <= GET_ADDR_H;
@@ -187,16 +193,11 @@ always @(negedge PCLK or posedge CS) begin
 
             GET_ADDR_H: begin
                 ADDR[15:8] <= RDATA;
-                state <= SET_CONTROL;
-            end
-
-            SET_CONTROL: begin
                 // Common control signals
                 MREQ <= CMD[1];
                 IORQ <= !CMD[1];
                 RD <= CMD[0];    
                 WR <= !CMD[0];     
-                M1 <= CMD[7];
                 // Memory access signals
                 if (!CMD[1]) begin  // If MREQ is active
                     if (!CMD[5]) begin // If NO_SLTSL
@@ -214,13 +215,8 @@ always @(negedge PCLK or posedge CS) begin
                     end
                 end
                 // State transition and data direction
-                if (CMD[0]) begin  // Write operations
-                    data_out <= RDATA;
-                end
-                data_drive <= CMD[0];
                 rdata_drive <= 1'b1;
 				rdata_out <= 8'h00;
-                delay_count <= 2'b11;  // Initialize delay counter
                 state <= WAIT_STATE;
             end
 
