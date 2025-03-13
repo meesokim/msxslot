@@ -151,6 +151,7 @@ always @(negedge PCLK or posedge CS) begin
 		M1 = 1'b1;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
+        RESET <= 1'b1;
     end else begin
         case (state)
             GET_ADDR: begin

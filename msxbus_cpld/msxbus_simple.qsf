@@ -107,8 +107,8 @@ set_location_assignment PIN_89 -to M1
 set_location_assignment PIN_88 -to MREQ
 set_location_assignment PIN_86 -to RD
 set_location_assignment PIN_84 -to RESET
-set_location_assignment PIN_97 -to SLTSL1
-set_location_assignment PIN_100 -to SLTSL2
+set_location_assignment PIN_97 -to SLTSL2
+set_location_assignment PIN_100 -to SLTSL1
 set_location_assignment PIN_50 -to SW[0]
 set_location_assignment PIN_49 -to SW[1]
 set_location_assignment PIN_51 -to SWOUT

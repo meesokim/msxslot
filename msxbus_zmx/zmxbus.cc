@@ -121,9 +121,6 @@ extern "C" {
         // Send high address byte
         gpio_set_value8(addr >> 8);
         gpio_set_value8(value);
-        CLR0(0);
-        usleep(1);
-        SET0(0);
         // Wait for acknowledgment (0xFF)
         do {
             status = gpio_get_value8();
@@ -131,6 +128,9 @@ extern "C" {
                 break;
             }
         } while (retry--);
+        CLR0(0);
+        usleep(1);
+        SET0(0);
         // Deassert CS
         SET0(CS);
     

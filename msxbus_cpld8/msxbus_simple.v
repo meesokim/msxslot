@@ -25,7 +25,6 @@
 //   - GET_CMD: Command reception
 //   - GET_ADDR_L/H: Address reception (Low/High)
 //   - SET_CONTROL: Control signal setup
-//   - DELAY_STATE: Delay state
 //   - WAIT_STATE: Wait for WAIT signal
 //   - GET_DATA: Data reception
 //   - GET_STATUS: Read status information
@@ -108,7 +107,6 @@ localparam
     GET_ADDR_L = 3'd2,
     GET_ADDR_H = 3'd3,
     SET_CONTROL = 3'd4,
-    DELAY_STATE = 3'd5,
     GET_DATA = 3'd6,
     WAIT_STATE = 3'd7,
     GET_STATUS = 3'd8,    // New state
@@ -224,14 +222,6 @@ always @(negedge PCLK or posedge CS) begin
 				rdata_out <= 8'h00;
                 delay_count <= 2'b11;  // Initialize delay counter
                 state <= WAIT_STATE;
-            end
-
-            DELAY_STATE: begin
-                if (delay_count == 2'b00) begin
-                    state <= WAIT_STATE;
-                end else begin
-                    delay_count <= delay_count - 1;
-                end
             end
 
             WAIT_STATE: begin
