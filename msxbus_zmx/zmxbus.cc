@@ -48,6 +48,16 @@ void gpio_set_value8(uint8_t value) {
     PULSE0(PCLK);
 }
 
+void gpio_set_value8_delay(uint8_t value, int ms) {
+    // Set GPIO 0-7 to output
+    SEL0(0x09249249);
+    CLR0(GPIO_DATA_MASK);
+    SET0(value);
+    CLR0(PCLK);
+    usleep(ms);
+    SET0(PCLK);
+}
+
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
     uint8_t ret;
@@ -58,11 +68,22 @@ uint8_t gpio_get_value8(void) {
     return ret;
 }
 
+uint8_t gpio_get_data(void) {
+    uint8_t ret;
+    do {
+        PULSE0(PCLK);
+        ret = LEV0();
+    }
+    while(ret != 0xff);
+    PULSE0(PCLK);
+    return LEV0();
+}
+
 extern "C" {
-    EXPORT void reset(char b) 
+    EXPORT void reset(int ms) 
     {
         CLR0(CS);
-        gpio_set_value8(CMD_RESET | b ? 1 << 4 : 0);
+        gpio_set_value8_delay(CMD_RESET, ms);
         SET0(CS);
     }
     
@@ -71,8 +92,6 @@ extern "C" {
         if (!bcm2835_init()) return -1;
         gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
         reset(0);
-        usleep(10);
-        reset(1);
         // Set GPIO 0-9 (data pins, CLK, CS) to output
         SEL0(0x09249249);  // Set GPIO 0-7 to output
         SET0(CS | PCLK);
@@ -91,17 +110,8 @@ extern "C" {
         gpio_set_value8(addr);
         // Send high address byte
         gpio_set_value8(addr >> 8);
-        gpio_get_value8();
         // Wait for acknowledgment (0xFF)
-        do {
-            status = gpio_get_value8();
-            if (status == 0xFF) {
-                if (!(cmd & 0x01)) {
-                    data = gpio_get_value8();
-                    break;
-                }
-            }
-        } while (retry--);
+        data = gpio_get_data();
         // Deassert CS
         SET0(CS);
     
@@ -116,22 +126,13 @@ extern "C" {
         CLR0(CS);
         // Send command
         gpio_set_value8(cmd);
+        // Send data
+        gpio_set_value8(value);
         // Send low address byte
         gpio_set_value8(addr);
         // Send high address byte
         gpio_set_value8(addr >> 8);
-        gpio_set_value8(value);
-        // Wait for acknowledgment (0xFF)
-        do {
-            status = gpio_get_value8();
-            if (status == 0xFF) {
-                break;
-            }
-        } while (retry--);
-        CLR0(0);
-        usleep(1);
-        SET0(0);
-        // Deassert CS
+        PULSE0(PCLK);
         SET0(CS);
     
         return;

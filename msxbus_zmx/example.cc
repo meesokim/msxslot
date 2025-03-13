@@ -2,11 +2,17 @@
 #include "zmxbus.h"
 #include <iostream>
 #include <stdio.h>
-#include <unistd.h>
+// #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 using namespace std;
+
+ReadfnPtr read = NULL;
+WritefnPtr write = NULL;
+InitfnPtr init = NULL;
+ResetfnPtr reset = NULL;
+StatusfnPtr status = NULL;
 
 void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
     printf("%04X: ", addr);
@@ -15,15 +21,22 @@ void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
     }
     printf("\n");
 }
+void dump(uint16_t start, uint16_t size, uint8_t page )
+{
+    uint8_t buffer[16], c = 0, b;
+    write(WR_SLTSL1, start, page);
+for (uint16_t addr = start; addr < start + size; addr += 16) {
+        // Read 16 bytes
+        for (int i = 0; i < 16; i++) {
+            buffer[i] = read(RD_SLTSL1, addr + i);
+        }
+        print_memory_dump(addr, buffer, 16);
+    }    
+}
 
 int main(int argc, char **argv)
 {
     char *error;
-    ReadfnPtr read = NULL;
-    WritefnPtr write = NULL;
-    InitfnPtr init = NULL;
-    ResetfnPtr reset = NULL;
-    StatusfnPtr status = NULL;
     printf("%s\n", ZEMMIX_BUS);
     void *hDLL = OpenZemmix((char*)ZEMMIX_BUS, RTLD_LAZY);
     if (!hDLL)
@@ -54,32 +67,30 @@ int main(int argc, char **argv)
     printf("status:%llx\n", (long long unsigned int)status);
     if (init)
         init((char*)"sdcard");
-    reset(0);
-    reset(1);
+    reset(5);
+    read(RD_SLTSL1, 0);
+    reset(5);
     if (read)
     {
-        uint8_t buffer[16], c = 0, b;
-        for (uint16_t addr = 0x4000; addr < 0x4100; addr += 16) {
-            // Read 16 bytes
-            for (int i = 0; i < 16; i++) {
-                c = 0;
-		uint8_t b = read(RD_SLTSL1, addr + i);
-		for (int j = 0; j < 10; j++)
-                   if (b != read(RD_SLTSL1, addr + i))
-			c++;
-		if (c > 0)
-		   exit(0);
-		buffer[i] = b;
-            }
-            print_memory_dump(addr, buffer, 16);
-        }
+        dump(0x6000, 0x20, 1);
+        printf("--------------------------------\n");
+        dump(0x6000, 0x20, 2);
+        printf("--------------------------------\n");
+        dump(0x6000, 0x20, 3);
+        printf("--------------------------------\n");
+        dump(0x8000, 0x20, 1);
+        printf("--------------------------------\n");
+        dump(0x8000, 0x20, 2);
+        printf("--------------------------------\n");
+        dump(0x8000, 0x20, 3);
+        printf("--------------------------------\n");
+        dump(0xa000, 0x20, 1);
+        printf("--------------------------------\n");
+        dump(0xa000, 0x20, 2);
+        printf("--------------------------------\n");
+        dump(0xa000, 0x20, 3);
+        printf("--------------------------------\n");        
     }
-    if (reset)
-        reset(0);
-        sleep(1);
-        reset(1);
-    if (write)
-        write(WR_MEM, 0x4000, 0x1);
     CloseZemmix(hDLL);
     return 0;
 }
