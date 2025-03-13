@@ -1,0 +1,11 @@
+[Unit]
+Description=CPU Setup Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cpu_setup.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

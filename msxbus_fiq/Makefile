@@ -3,7 +3,8 @@ DOCKER := sudo docker
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-
+	sudo cp msxbus-fiq.conf /etc/modules-load.d/
+	
 rpi:
 	# Build the Docker image
 	$(DOCKER) build --build-arg https_proxy=$(https_proxy) --build-arg http_proxy=$(http_proxy) -t rpi-kernel-module .
