@@ -149,8 +149,6 @@ always @(negedge PCLK or posedge CS) begin
 		M1 = 1'b1;
         RESET <= 1'b1;
         rdata_drive <= 1'b0;
-		data_drive <= 1'b0;
-        data_out <= 8'b11111111;
     end else begin
         case (state)
             GET_CMD: begin
@@ -217,10 +215,12 @@ always @(negedge PCLK or posedge CS) begin
                 // State transition and data direction
                 rdata_drive <= 1'b1;
 				rdata_out <= 8'h00;
-                data_drive <= CMD[0];    
-                if (!CMD[0])
-                    data_out < 8'hff;
-                state <= WAIT_STATE;
+                if (!CMD[0]) begin
+                    data_drive <= 1'b1;    
+                    data_out <= 8'hff;
+                    state <= WAIT_STATE;
+                end else 
+                    state <= COMPLETE;             
             end
 
             WAIT_STATE: begin
@@ -228,6 +228,7 @@ always @(negedge PCLK or posedge CS) begin
                     rdata_out <= 8'hFF; // ACK
 					if (!CMD[0]) begin
 	                    state <= GET_DATA;
+                        data_drive = 1'b0;
 					end else begin
 	                    state <= COMPLETE;
 					end
