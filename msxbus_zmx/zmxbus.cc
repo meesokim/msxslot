@@ -82,6 +82,7 @@ uint8_t gpio_get_data(void) {
 extern "C" {
     EXPORT void reset(int ms) 
     {
+        SET0(CS | PCLK);
         CLR0(CS);
         gpio_set_value8_delay(CMD_RESET, ms);
         SET0(CS);
@@ -92,9 +93,7 @@ extern "C" {
         if (!bcm2835_init()) return -1;
         gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
         reset(0);
-        // Set GPIO 0-9 (data pins, CLK, CS) to output
-        SEL0(0x09249249);  // Set GPIO 0-7 to output
-        SET0(CS | PCLK);
+
 	return 0;
     }
     
@@ -102,6 +101,7 @@ extern "C" {
     {
         uint8_t data = 0, status;
         int retry = 255;
+        SET0(CS | PCLK);
         // Assert CS
         CLR0(CS);
         // Send command
@@ -122,6 +122,7 @@ extern "C" {
     {
         uint8_t status;
         int retry = 255;
+        SET0(CS | PCLK);
         // Assert CS
         CLR0(CS);
         // Send command
@@ -140,6 +141,7 @@ extern "C" {
     
     unsigned char msxstatus()
     {
+        SET0(CS | PCLK);
         CLR0(CS);
         gpio_set_value8(CMD_STATUS);
         uint8_t status = gpio_get_value8();
