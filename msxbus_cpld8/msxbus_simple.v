@@ -217,6 +217,9 @@ always @(negedge PCLK or posedge CS) begin
                 // State transition and data direction
                 rdata_drive <= 1'b1;
 				rdata_out <= 8'h00;
+                data_drive <= CMD[0];    
+                if (!CMD[0])
+                    data_out < 8'hff;
                 state <= WAIT_STATE;
             end
 
