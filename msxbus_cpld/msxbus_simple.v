@@ -25,7 +25,6 @@
 //   - GET_CMD: Command reception
 //   - GET_ADDR_L/H: Address reception (Low/High)
 //   - SET_CONTROL: Control signal setup
-//   - DELAY_STATE: Delay state
 //   - WAIT_STATE: Wait for WAIT signal
 //   - GET_DATA: Data reception
 //   - GET_STATUS: Read status information
@@ -75,10 +74,8 @@ module msxbus_simple (
     output reg SLTSL2_CS1,    // New
     output reg SLTSL2_CS2,    // New
     output reg SLTSL2_CS12,   // New
-    output reg CS1,
-    output reg CS2,
-    output reg CS12,
-    output MCLK, SWOUT, RFSH,
+    output MCLK, SWOUT, 
+    output reg RFSH,
     output reg M1
 );
 
@@ -88,7 +85,6 @@ reg [15:0] rdata_out;
 reg [7:0] CMD;        // Added CMD register
 reg [4:0] state;
 reg rdata_drive;
-reg [15:0] address_out;
 
 // Add data_drive register declaration
 reg [7:0] data_out;
@@ -96,7 +92,7 @@ reg data_drive;
 
 // Add bidirectional control for DATA bus
 assign RDATA = rdata_drive ? rdata_out : 16'bZ;
-assign DATA = data_drive ? data_out : 8'bZ;
+assign DATA = data_drive ? data_out : 8'bZ;  // Only drive when writing and enabled
 assign SWOUT = 1'b1;
 
 // Add to register declarations
@@ -105,8 +101,8 @@ reg [1:0] delay_count;
 // Add new state to localparam
 localparam 
     IDLE = 3'd0,
-    GET_ADDR = 3'd1,
-    GET_CMD_CTRL = 3'd2,
+    GET_ADDRESS = 3'd1,
+    GET_CMD_DATA = 3'd2,
     GET_STATE_DATA = 3'd3,
     COMPLETE = 4'd9,
     CMD_MEM_READ = 4'd0,
@@ -135,7 +131,7 @@ reg [3:0] setup_time;
 // Modify always block to use only positive edge of CS
 always @(negedge PCLK or posedge CS) begin
     if (CS) begin
-        state <= GET_ADDR;
+        state <= GET_CMD_DATA;
         RD <= 1'b1;
         WR <= 1'b1;
         MREQ <= 1'b1;
@@ -149,69 +145,81 @@ always @(negedge PCLK or posedge CS) begin
 		SLTSL2_CS2 = 1'b1;
 		SLTSL2_CS12 = 1'b1;
 		M1 = 1'b1;
-        rdata_drive <= 1'b0;
-		data_drive <= 1'b0;
         RESET <= 1'b1;
+		rdata_drive <= 1'b0;
+        RFSH <= 1'b1;
+        ADDR <= 4'hffff;
+        data_out <= 2'hff;
+        rdata_out <= 4'hffff;
     end else begin
         case (state)
-            GET_ADDR: begin
-                address_out <= RDATA;
-                state <= GET_CMD_CTRL;
+            GET_CMD_DATA: begin
+                CMD <= RDATA[15:8];
+                case (RDATA[11:8])
+                    CMD_MEM_READ: begin // Memory Read
+                        state <= GET_ADDRESS;
+                    end
+                    CMD_MEM_WRITE: begin // Memory Write
+                        data_out <= RDATA[7:0];
+                        data_drive <= RDATA[8];
+                        state <= GET_ADDRESS;
+                    end
+                    CMD_IO_READ: begin // IO Read
+                        state <= GET_ADDRESS;
+                    end
+                    CMD_IO_WRITE: begin // IO Write
+                        data_out <= RDATA[7:0];
+                        data_drive <= RDATA[8];
+                        state <= GET_ADDRESS;
+                    end
+                    CMD_RESET: begin // Reset
+                        RESET <= 1'b0;
+                        state <= IDLE;
+                    end
+                    CMD_STATUS: begin // Get Status
+                        state <= GET_STATE_DATA;
+                        rdata_drive <= 1'b1;
+                    end
+                    default: state <= IDLE;
+                endcase                
             end
 
-            GET_CMD_CTRL: begin
-                CMD <= RDATA[15:8];
-                ADDR <= address_out;
-                if (CMD[3:0] < 4) begin
-                    // Common control signals
-                    MREQ <= CMD[1];
-                    IORQ <= !CMD[1];
-                    RD <= CMD[0];    
-                    WR <= !CMD[0];     
-                    M1 <= CMD[7];
-                    // Memory access signals
-                    if (!CMD[1]) begin  // If MREQ is active
-                        if (!CMD[5]) begin // If NO_SLTSL
-                            SLTSL1 <= CMD[4];
-                            SLTSL2 <= !CMD[4];
-                            if (!CMD[4]) begin  // SLTSL1 active
-                                SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                                SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                                SLTSL1_CS12 <= SLTSL1_CS1 & SLTSL1_CS2;
-                            end else begin     // SLTSL2 active
-                                SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                                SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                                SLTSL2_CS12 <= SLTSL2_CS1 & SLTSL2_CS2;
-                            end
+            GET_ADDRESS: begin
+                ADDR <= RDATA;
+                // Common control signals
+                MREQ <= CMD[1];
+                IORQ <= !CMD[1];
+                RD <= CMD[0];    
+                WR <= !CMD[0];     
+                // Memory access signals
+                if (!CMD[1]) begin  // If MREQ is active
+                    if (!CMD[5]) begin // If NO_SLTSL
+                        SLTSL1 <= CMD[4];
+                        SLTSL2 <= !CMD[4];
+                        if (!CMD[4]) begin  // SLTSL1 active
+                            SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+                            SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+                            SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                        end else begin     // SLTSL2 active
+                            SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+                            SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+                            SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
                         end
                     end
-                    // State transition and data direction
-                    if (CMD[0]) begin  // Write operations
-                        data_out <= RDATA[7:0];
-                    end
-                    data_drive <= CMD[0];
-                    rdata_drive <= 1'b1;
-                    rdata_out <= 16'h0000;
-                    state <= GET_STATE_DATA;
                 end
-                else begin
-                    case (CMD[3:0])    // Only use lower 4 bits for command
-                        CMD_RESET: begin // Reset
-                            RESET <= CMD[4];
-                            state <= IDLE;
-                        end
-                        CMD_STATUS: begin // Get Status
-                            state <= GET_STATE_DATA;
-                            rdata_drive <= 1'b1;
-                        end
-                        default: state <= IDLE;
-                    endcase
-                end
+
+                // State transition and data direction
+//                rdata_drive <= 1'b1;
+                state <= GET_STATE_DATA;
+//                if (!CMD[0]) begin  // Read operation
+//                    data_drive <= 1'b0;    
+//                    data_out <= 2'hff;
+//                end
             end
 
             GET_STATE_DATA: begin
-                rdata_out <= {WAIT, INT, SW, 4'b00, DATA};
-                end
+                rdata_drive <= 1'b1;
+                rdata_out <= {WAIT, INT, SW, 4'b0000, DATA};
             end
 
         endcase
@@ -220,6 +228,4 @@ end
 
 // Remove the old combinational chip select logic block
 endmodule
-
-
 

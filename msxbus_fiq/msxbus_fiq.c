@@ -5,7 +5,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 
-#define GPIO_FIQ_PIN1 19
+#define GPIO_FIQ_PIN1 26
 #define GPIO_FIQ_PIN2 17
 #define GPIO_OUT_PIN  24
 

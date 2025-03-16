@@ -149,6 +149,8 @@ always @(negedge PCLK or posedge CS) begin
 		M1 = 1'b1;
         RESET <= 1'b1;
         rdata_drive <= 1'b0;
+		data_drive <= 1'b0;
+        data_out <= 8'b11111111;
     end else begin
         case (state)
             GET_CMD: begin
@@ -201,26 +203,24 @@ always @(negedge PCLK or posedge CS) begin
                     if (!CMD[5]) begin // If NO_SLTSL
                         SLTSL1 <= CMD[4];
                         SLTSL2 <= !CMD[4];
-                    end
-                    if (!CMD[4]) begin  // SLTSL1 active
-                        SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                        SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                        SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
-                    end else begin     // SLTSL2 active
-                        SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                        SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                        SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                        if (!CMD[4]) begin  // SLTSL1 active
+                            SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+                            SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+                            SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                        end else begin     // SLTSL2 active
+                            SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+                            SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+                            SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
+                        end
                     end
                 end
                 // State transition and data direction
                 rdata_drive <= 1'b1;
 				rdata_out <= 8'h00;
-                if (!CMD[0]) begin
-                    data_drive <= 1'b1;    
+                data_drive <= CMD[0];    
+                if (!CMD[0])
                     data_out <= 8'hff;
-                    state <= WAIT_STATE;
-                end else 
-                    state <= COMPLETE;             
+                state <= WAIT_STATE;
             end
 
             WAIT_STATE: begin
@@ -228,7 +228,6 @@ always @(negedge PCLK or posedge CS) begin
                     rdata_out <= 8'hFF; // ACK
 					if (!CMD[0]) begin
 	                    state <= GET_DATA;
-                        data_drive = 1'b0;
 					end else begin
 	                    state <= COMPLETE;
 					end

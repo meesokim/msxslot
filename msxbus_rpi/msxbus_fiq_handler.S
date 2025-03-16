@@ -2,12 +2,6 @@
 
 .text
 .global msxbus_fiq_handler
-.global fiq_state
-.global cmd_byte
-.global addr
-.global data_byte
-.global mem
-.global msxbus_read
 .align 4
 
 msxbus_fiq_handler:
@@ -70,31 +64,12 @@ setup_read:
     mov     r1, #3
     ldr     r0, =fiq_state
     str     r1, [r0]
-    bl      msxbus_read      @ C 함수 호출
-    ldr     r1, =data_byte
-    str     r0, [r1]         @ 읽은 데이터 저장
     b       fiq_done
-
-setup_write:
-    mov     r1, #3
-    ldr     r0, =fiq_state
-    str     r1, [r0]
-    b       get_data         @ 데이터 수신 대기
 
 get_data:
     bl      gpio_get_value8
     ldr     r1, =data_byte
     str     r0, [r1]
-    
-    // 메모리에 데이터 저장
-    ldr     r0, =addr
-    ldr     r0, [r0]         @ 전체 주소
-    ldr     r1, =mem         @ 메모리 배열 베이스 주소
-    ldr     r2, =data_byte
-    ldr     r2, [r2]         @ 데이터
-    strb    r2, [r1, r0]     @ mem[addr] = data_byte
-    
-    bl      msxbus_write     @ C 함수 호출
     mov     r1, #0
     ldr     r0, =fiq_state
     str     r1, [r0]

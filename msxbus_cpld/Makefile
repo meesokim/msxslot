@@ -125,5 +125,6 @@ jic: reports/$(PROJECT).sof
 program: reports/$(PROJECT).sof
 	$(QUARTUS_PGM) $(PGM_ARGS) -o "P;reports/$(PROJECT).sof"
 
-program-pof: reports/$(PROJECT).pof
+prog: reports/$(PROJECT).pof
+	@usbipd.py
 	$(QUARTUS_PGM) $(PGM_ARGS) -o "BVP;reports/$(PROJECT).pof"

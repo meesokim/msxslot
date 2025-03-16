@@ -12,4 +12,5 @@ rpi:
 	$(DOCKER) run --rm -v $(PWD):/workdir rpi-kernel-module bash -c "make -C /usr/src/linux M=/workdir modules"
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	# make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	rm -f .*.cmd *.symvers *.mod *.mod.c *.o *.ko

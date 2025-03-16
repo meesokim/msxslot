@@ -141,9 +141,10 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ADDR
 # set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ADDR
 # set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to MREQ
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to ADDR
-set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to WR
-set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to WR
+# set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to WR
+# set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to WR
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to WAIT
+# set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to WAIT
 set_location_assignment PIN_88 -to PSW0
 set_location_assignment PIN_89 -to PSW1
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to BUSDIR
