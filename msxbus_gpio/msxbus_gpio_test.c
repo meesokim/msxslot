@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include "bcm2835.h"
 
 // Change peripheral base address for Raspberry Pi 3 (BCM2837)
 #define BCM2837_PERI_BASE 0x3F000000
@@ -33,61 +34,61 @@
 #define CMD_STATUS      0x08
 #define WAIT            (1 << 15)
 
-#define OUTPUT_DIR0 0x09249249
-#define OUTPUT_DIR1 0x09249249
+#define OUTPUT_DIR0 0b001001001001001001001001001001
+#define OUTPUT_DIR1 0b001001001001001001001001001001
 #define INPUT_DIR0  0x00000000
 #define INPUT_DIR1  0x00048000
 
 static volatile uint32_t *gpio;
 
-#define GPIO_CLK_0 *(gpio + GPCLR0) = 1 << GPIO_CLK
-#define GPIO_CLK_1 *(gpio + GPSET0) = 1 << GPIO_CLK
-#define GPIO_CS_0  *(gpio + GPCLR0) = 1 << GPIO_CS
-#define GPIO_CS_1  *(gpio + GPSET0) = 1 << GPIO_CS
+#define GPIO_PCLK_0 gpio[GPCLR0] = 1 << GPIO_CLK
+#define GPIO_PCLK_1 gpio[GPSET0] = 1 << GPIO_CLK
+#define GPIO_CS_0  gpio[GPCLR0] = 1 << GPIO_CS
+#define GPIO_CS_1  gpio[GPSET0] = 1 << GPIO_CS
 
 #define udelay usleep
 
 void gpio_set_value8(uint8_t value) {
     // Set GPIO 0-7 to output
-    *(gpio + GPSEL0) = OUTPUT_DIR0;
-    *(gpio + GPCLR0) = GPIO_DATA_MASK8;
-    *(gpio + GPSET0) = value;
-    *(gpio + GPCLR0) = 1 << GPIO_CLK;
-    *(gpio + GPSET0) = 1 << GPIO_CLK;
+    gpio[GPSEL0] = OUTPUT_DIR0;
+    gpio[GPCLR0] = GPIO_DATA_MASK8;
+    gpio[GPSET0] = value;
+    gpio[GPCLR0] = 1 << GPIO_CLK;
+    gpio[GPSET0] = 1 << GPIO_CLK;
 }
 
 void gpio_set_value16(uint16_t value) {
     // Set GPIO 0-15 to output
-    // *(gpio + GPSEL0) = OUTPUT_DIR0;
-    // *(gpio + GPSEL1) = OUTPUT_DIR1;
-    *(gpio + GPCLR0) = GPIO_DATA_MASK16;
-    *(gpio + GPSET0) = value;
-    *(gpio + GPCLR0) = 1 << GPIO_CLK;
-    *(gpio + GPSET0) = 1 << GPIO_CLK;
-    printf("w0x%04x\n", value);
+    // gpio[GPSEL0] = OUTPUT_DIR0;
+    // gpio[GPSEL1] = OUTPUT_DIR1;
+    gpio[GPCLR0] = GPIO_DATA_MASK16;
+    gpio[GPSET0] = value;
+    gpio[GPCLR0] = 1 << GPIO_CLK;
+    gpio[GPSET0] = 1 << GPIO_CLK;
+    // printf("w0x%04x\n", value);
 }
 
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
     uint8_t ret;
-    *(gpio + GPSEL0) = INPUT_DIR0;
-    *(gpio + GPCLR0) = 1 << GPIO_CLK;
-    *(gpio + GPSEL0) = 0x09200000;
-    ret = (uint8_t)(*(gpio + GPLEV0) & GPIO_DATA_MASK8);
-    *(gpio + GPSET0) = 1 << GPIO_CLK;
+    gpio[GPSEL0] = INPUT_DIR0;
+    gpio[GPCLR0] = 1 << GPIO_CLK;
+    gpio[GPSEL0] = 0x09200000;
+    ret = (uint8_t)(gpio[GPLEV0] & GPIO_DATA_MASK8);
+    gpio[GPSET0] = 1 << GPIO_CLK;
     return ret;
 }
 
 uint16_t gpio_get_value16(void) {
     // Set GPIO 0-15 to input
     uint16_t ret;
-    *(gpio + GPSET0) = 1 << GPIO_CLK;
-    *(gpio + GPCLR0) = 1 << GPIO_CLK;
-    *(gpio + GPSEL0) = INPUT_DIR0;
-    *(gpio + GPSEL1) = INPUT_DIR1;
-    ret = (uint16_t)(*(gpio + GPLEV0));
-    *(gpio + GPSET0) = 1 << GPIO_CLK;
-    printf("r0x%04x\n", ret);
+    // gpio[GPSET0] = 1 << GPIO_CLK;
+    gpio[GPCLR0] = 1 << GPIO_CLK;
+    gpio[GPSEL0] = INPUT_DIR0;
+    gpio[GPSEL1] = INPUT_DIR1;
+    ret = (uint16_t)(gpio[GPLEV0]);
+    gpio[GPSET0] = 1 << GPIO_CLK;
+    // printf("r0x%04x\n", ret);
     return ret;
 }
 
@@ -97,7 +98,7 @@ static void gpio_bit_bang(uint8_t cmd, uint16_t addr, uint8_t data, uint8_t *rea
     uint8_t retry = 0xff;
 
     GPIO_CS_0;
-    GPIO_CLK_1;
+    GPIO_PCLK_1;
 
     // Send address
     gpio_set_value16(addr);
@@ -138,13 +139,13 @@ uint8_t msxbus_mem_read(uint16_t addr) {
     GPIO_PCLK_1;
     GPIO_CS_0;
 
-    // Send command
-    gpio_set_value16(addr);
     // Send command and data
     gpio_set_value16(cmd << 8);
+    // Send address
+    gpio_set_value16(addr);
     do {
         value = gpio_get_value16();
-        printf("r0x%04x\n", value);
+        // printf("r0x%04x\n", value);
         // //printf("%04x,", value);
         // if (value & WAIT)
         //     break;
@@ -159,11 +160,10 @@ void msxbus_mem_write(uint16_t addr, uint8_t data) {
     uint8_t cmd = CMD_MEM_READ;
     // Assert CS
     GPIO_CS_0;
-
-    // Send command
-    gpio_set_value16(addr);
     // Send command and data
     gpio_set_value16(cmd << 8 | data);
+    // Send command
+    gpio_set_value16(addr);
     do {
         value = gpio_get_value16();
         if (value & WAIT)
@@ -186,24 +186,13 @@ int main() {
     int mem_fd;
     uint8_t buffer[16];
 
-    // Open /dev/mem
-    if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC)) < 0) {
-        printf("Failed to open /dev/mem\n");
-        return -1;
-    }
-
-    // Map GPIO registers
-    gpio = mmap(NULL, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, mem_fd, GPIO_BASE);
-    if (gpio == MAP_FAILED) {
-        printf("mmap failed\n");
-        close(mem_fd);
-        return -1;
-    }
+    if (!bcm2835_init()) return -1;
+    gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
 	             
     // Set GPIO 0-9 (data pins, CLK, CS) to output
-    *(gpio + GPSEL0) = OUTPUT_DIR0;  // Set GPIO 0-9 to output
-    *(gpio + GPSEL1) = OUTPUT_DIR1;  // Set GPIO 10-17 to output
-    *(gpio + GPSET0) = 1 << GPIO_CLK | 1 << GPIO_CS;
+    gpio[GPSEL0] = OUTPUT_DIR0;  // Set GPIO 0-9 to output
+    gpio[GPSEL1] = OUTPUT_DIR1;  // Set GPIO 10-17 to output
+    gpio[GPSET0] = 1 << GPIO_CLK | 1 << GPIO_CS;
 
     // msxbus_reset(0);
     // msxbus_reset(1);
@@ -215,8 +204,5 @@ int main() {
         }
         print_memory_dump(addr, buffer, 16);
     }
-
-    munmap((void*)gpio, BLOCK_SIZE);
-    close(mem_fd);
     return 0;
 }
