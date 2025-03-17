@@ -26,9 +26,10 @@ void dump(uint16_t start, uint16_t size, uint8_t page )
 {
     uint8_t buffer[16], c = 0, b;
     write(WR_SLTSL1, start, page);
-for (uint16_t addr = start; addr < start + size; addr += 16) {
+    for (uint16_t addr = start; addr < start + size; addr += 16) {
         // Read 16 bytes
         for (int i = 0; i < 16; i++) {
+            // write(WR_SLTSL1, start, page);
             buffer[i] = read(RD_SLTSL1, addr + i);
         }
         print_memory_dump(addr, buffer, 16);
@@ -71,6 +72,7 @@ int main(int argc, char **argv)
     // printf("status:%02x\n", msxstatus());
     if (init)
         init((char*)"sdcard");
+    read(0,0);
     // reset(5);
     // read(RD_SLTSL1, 0);
     // reset(5);

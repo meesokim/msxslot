@@ -25,11 +25,11 @@ typedef unsigned char (*StatusfnPtr)(void);
     #pragma warning Unknown dynamic link import/export semantics.
 #endif
 
-#define RD_SLTSL1 0x00
-#define RD_SLTSL2 0x10
-#define RD_MEM    0x20
-#define RD_IO     0x02
-#define WR_SLTSL1 0x01
-#define WR_SLTSL2 0x11
-#define WR_MEM    0x21
-#define WR_IO     0x03
+#define RD_SLTSL1 0b000000
+#define RD_SLTSL2 0b010000
+#define RD_MEM    0b100000
+#define RD_IO     0b000010
+#define WR_SLTSL1 0b000001
+#define WR_SLTSL2 0b010001
+#define WR_MEM    0b100001
+#define WR_IO     0b000011
