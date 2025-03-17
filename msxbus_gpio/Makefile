@@ -15,7 +15,7 @@ ioctl:
 	cc -o test_ioctl msxbus_ioctl_test.c
 
 gpio:
-	cc -o test_gpio msxbus_gpio_test.c
+	cc -o test_gpio msxbus_gpio_test.c ../lib/libbcm2835.a
 
 gpio8:
 	cc -o test_gpio8 msxbus_gpio8_test.c ../lib/libbcm2835.a
