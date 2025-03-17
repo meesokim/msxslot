@@ -65,6 +65,8 @@ int main(int argc, char **argv)
     printf("init:%llx\n", (long long unsigned int)init);
     printf("reset:%llx\n", (long long unsigned int)reset);
     printf("status:%llx\n", (long long unsigned int)status);
+    printf("status:%02x\n", status());
+    exit(0);
     if (init)
         init((char*)"sdcard");
     reset(5);

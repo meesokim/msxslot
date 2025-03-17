@@ -38,6 +38,7 @@ static volatile uint32_t *gpio;
 #define CLR0(a) gpio[GPCLR0] = a
 #define SET0(a) gpio[GPSET0] = a
 #define SEL0(a) gpio[GPSEL0] = a 
+#define SEL1(a) gpio[GPSEL1] = a 
 #define PULSE0(a) gpio[GPCLR0] = a; gpio[GPSET0] = a
 #define LEV0() gpio[GPLEV0]
 
@@ -74,8 +75,8 @@ uint8_t gpio_get_data(void) {
     do {
         PULSE0(PCLK);
         ret = LEV0();
-    }
-    while(!(ret & 1 << GPIO_WAIT));
+        // printf("%04x\n", ret);
+    } while(!(ret & 1 << GPIO_WAIT));
     PULSE0(PCLK);
     return LEV0();
 }
@@ -93,6 +94,7 @@ extern "C" {
     {
         if (!bcm2835_init()) return -1;
         gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
+        SEL1(0);
         reset(0);
 
 	return 0;
@@ -134,13 +136,13 @@ extern "C" {
         gpio_set_value8(addr);
         // Send high address byte
         gpio_set_value8(addr >> 8);
-        PULSE0(PCLK);
+        gpio_get_data();
         SET0(CS);
     
         return;
     }
     
-    unsigned char msxstatus()
+    EXPORT unsigned char msxstatus()
     {
         SET0(CS | PCLK);
         CLR0(CS);
