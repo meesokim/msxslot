@@ -156,20 +156,22 @@ always @(negedge PCLK or posedge CS) begin
             GET_CMD_DATA: begin
                 CMD <= RDATA[15:8];
                 case (RDATA[11:8])
-                    CMD_MEM_READ: begin // Memory Read
+                    CMD_MEM_READ: begin
+                        data_drive <= 1'b0;  // Set to input mode for read
                         state <= GET_ADDRESS;
                     end
-                    CMD_MEM_WRITE: begin // Memory Write
+                    CMD_MEM_WRITE: begin
                         data_out <= RDATA[7:0];
-                        data_drive <= RDATA[8];
+                        data_drive <= 1'b1;  // Set to output mode for write
                         state <= GET_ADDRESS;
                     end
-                    CMD_IO_READ: begin // IO Read
+                    CMD_IO_READ: begin
+                        data_drive <= 1'b0;  // Set to input mode for read
                         state <= GET_ADDRESS;
                     end
-                    CMD_IO_WRITE: begin // IO Write
+                    CMD_IO_WRITE: begin
                         data_out <= RDATA[7:0];
-                        data_drive <= RDATA[8];
+                        data_drive <= 1'b1;  // Set to output mode for write
                         state <= GET_ADDRESS;
                     end
                     CMD_RESET: begin // Reset

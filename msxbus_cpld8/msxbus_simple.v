@@ -65,6 +65,7 @@ module msxbus_simple (
     output reg MREQ,
     output reg IORQ,
     output reg RESET,
+    output reg RWAIT,
     output reg [15:0] ADDR,
     output reg SLTSL1,
     output reg SLTSL2,
@@ -99,15 +100,15 @@ reg [1:0] delay_count;
 
 // Add new state to localparam
 localparam 
-    IDLE = 3'd0,
-    GET_CMD = 3'd1,
-    GET_ADDR_L = 3'd2,
-    GET_ADDR_H = 3'd3,
-    SET_CONTROL = 3'd4,
-    SEND_DATA = 3'd5,
-    GET_DATA = 3'd6,
-    WAIT_STATE = 3'd7,
-    GET_STATUS = 3'd8,    // New state
+    IDLE = 4'd0,
+    GET_CMD = 4'd1,
+    GET_ADDR_L = 4'd2,
+    GET_ADDR_H = 4'd3,
+    SLOT_ACCESS = 4'd4,
+    SEND_DATA = 4'd5,
+    GET_DATA = 4'd6,
+    WAIT_STATE = 4'd7,
+    GET_STATUS = 4'd8,    // New state
     COMPLETE = 4'd9,
     CMD_MEM_READ = 4'd0,
     CMD_MEM_WRITE = 4'd1,
@@ -150,22 +151,30 @@ always @(negedge PCLK or posedge CS) begin
         RESET <= 1'b1;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
-        data_out <= 8'b11111111;
+        data_out <= 8'bZ;
+        rdata_out <= 8'bZ;
+        RWAIT <= 1'b1;
     end else begin
         case (state)
             GET_CMD: begin
                 CMD <= RDATA;
-                case (RDATA[3:0])    // Only use lower 4 bits for command
+                case (CMD[3:0])    // Only use lower 4 bits for command
                     CMD_MEM_READ: begin // Memory Read
+                        data_drive <= 1'b0;
+                        data_out <= 8'bZ;
+                        state <= GET_ADDR_L;
+                    end
+                    CMD_IO_READ: begin // IO Read
+                        data_drive <= 1'b0;    
+                        data_out <= 8'bZ;
                         state <= GET_ADDR_L;
                     end
                     CMD_MEM_WRITE: begin // Memory Write
+                        rdata_out <= 8'bZ;
                         state <= SEND_DATA;
                     end
-                    CMD_IO_READ: begin // IO Read
-                        state <= GET_ADDR_L;
-                    end
                     CMD_IO_WRITE: begin // IO Write
+                        rdata_out <= 8'bZ;
                         state <= SEND_DATA;
                     end
                     CMD_RESET: begin // Reset
@@ -182,7 +191,6 @@ always @(negedge PCLK or posedge CS) begin
 
             SEND_DATA: begin
                 data_out <= RDATA;
-                data_drive <= CMD[0];    
                 state <= GET_ADDR_L;
             end
 
@@ -198,6 +206,12 @@ always @(negedge PCLK or posedge CS) begin
                 IORQ <= !CMD[1];
                 RD <= CMD[0];    
                 WR <= !CMD[0];     
+                // State transition and data direction
+                if (!CMD[0]) begin
+                    rdata_drive <= 1'b1;
+                    data_out <= 8'hff;
+                end else
+                    data_drive <= 1'b1;    
                 // Memory access signals
                 if (!CMD[1]) begin  // If MREQ is active
                     if (!CMD[5]) begin // If NO_SLTSL
@@ -214,29 +228,15 @@ always @(negedge PCLK or posedge CS) begin
                         end
                     end
                 end
-                // State transition and data direction
-                rdata_drive <= 1'b1;
-				rdata_out <= 8'h00;
-                data_drive <= CMD[0];    
-                if (!CMD[0])
-                    data_out <= 8'hff;
-                state <= WAIT_STATE;
-            end
-
-            WAIT_STATE: begin
-                if (WAIT) begin
-                    rdata_out <= 8'hFF; // ACK
-					if (!CMD[0]) begin
-	                    state <= GET_DATA;
-					end else begin
-	                    state <= COMPLETE;
-					end
-                end
+                state <= GET_DATA;
             end
 
             GET_DATA: begin
-                rdata_out <= DATA;
-                state <= COMPLETE;
+                if (!CMD[0])
+                    rdata_out <= DATA;
+                RWAIT <= WAIT;
+                if (WAIT)
+                    state <= COMPLETE;
             end
 
             GET_STATUS: begin
@@ -245,6 +245,18 @@ always @(negedge PCLK or posedge CS) begin
             end
 
             COMPLETE: begin
+                RD <= 1'b1;
+                WR <= 1'b1;
+                MREQ <= 1'b1;
+                IORQ <= 1'b1;
+                SLTSL1 <= 1'b1;    // Added
+                SLTSL2 <= 1'b1;    // Added
+                SLTSL1_CS1 = 1'b1;
+                SLTSL1_CS2 = 1'b1;
+                SLTSL1_CS12 = 1'b1;
+                SLTSL2_CS1 = 1'b1;
+                SLTSL2_CS2 = 1'b1;
+                SLTSL2_CS12 = 1'b1;
                 state <= IDLE;
             end
         endcase

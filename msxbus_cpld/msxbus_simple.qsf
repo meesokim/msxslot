@@ -82,6 +82,7 @@ set_location_assignment PIN_98 -to SLTSL1_CS1
 set_location_assignment PIN_99 -to SLTSL1_CS2
 set_location_assignment PIN_96 -to SLTSL1_CS12
 
+set_location_assignment PIN_18 -to CS2
 set_location_assignment PIN_17 -to CS
 set_location_assignment PIN_43 -to PCLK
 set_location_assignment PIN_16 -to RDATA[15]
