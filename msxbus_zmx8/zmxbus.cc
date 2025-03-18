@@ -69,21 +69,27 @@ uint8_t gpio_get_value8(void) {
 
 uint8_t gpio_get_data(void) {
     uint32_t ret;
-    int tries = 3;
+    int tries = 5;
     CLR0(RELEASE | GPIO_DATA_MASK);
     do {
         PULSE0(PCLK);
         ret = LEV0();
-    } while(!(ret & 1 << GPIO_WAIT));
+    } while(!(ret & 1 << GPIO_WAIT) || tries--);
     SET0(RELEASE);
     PULSE0(PCLK);
     return LEV0();
 }
 
 void gpio_set_data8(uint8_t value) {
+    uint32_t ret;
     CLR0(GPIO_DATA_MASK);
     SET0(value | RELEASE | PCLK);
     PULSE0(PCLK);
+    do {
+        PULSE0(PCLK);
+        ret = LEV0();
+    } while(!(ret & 1 << GPIO_WAIT));
+    SET0(RELEASE);
     return;
 }
 
@@ -119,7 +125,6 @@ extern "C" {
         gpio_set_value8(addr >> 8);
         // Wait for acknowledgment (0xFF)
         data = gpio_get_data();
-        PULSE0(PCLK);
         // Deassert CS
         SET0(CS);
     
