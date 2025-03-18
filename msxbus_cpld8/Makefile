@@ -29,7 +29,7 @@ SRCS = msxbus_simple.v
 # program: program your device with the compiled design
 ###################################################################
 
-all: smart.log $(PROJECT).asm.rpt $(PROJECT).sta.rpt pof jic
+all: smart.log $(PROJECT).asm.rpt $(PROJECT).sta.rpt 
 
 clean:
 	$(RM) -rf reports db incremental_db smart.log *.chg
@@ -113,10 +113,10 @@ show:
 	echo $(SRCS)
 	
 pof: reports/$(PROJECT).sof
-	$(QUARTUS_CPF) -c -d $(FLASH_DEVICE) $< $(patsubst %.sof,%.pof,$<)
+	echo $(QUARTUS_CPF) -c -d $(FLASH_DEVICE) $< $(patsubst %.sof,%.pof,$<)
 	
 jic: reports/$(PROJECT).sof
-	$(QUARTUS_CPF) -c -s $(PART) -d $(FLASH_DEVICE) $< $(patsubst %.sof,%.jic,$<)
+	echo (QUARTUS_CPF) -c -s $(PART) -d $(FLASH_DEVICE) $< $(patsubst %.sof,%.jic,$<)
 
 ###################################################################
 # Programming the device

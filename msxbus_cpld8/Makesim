@@ -1,0 +1,18 @@
+CXX = g++
+VERILATOR = verilator
+VERILATOR_FLAGS = --trace -cc
+CXXFLAGS = -I$(VERILATED_ROOT)/include -I obj_dir
+
+TARGET = msxbus_sim
+SRCS = msxbus_simple.v
+TESTBENCH = msxbus_sim.cpp
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS) $(TESTBENCH)
+	$(VERILATOR) $(VERILATOR_FLAGS) $(SRCS) --exe $(TESTBENCH)
+	make -C obj_dir -f Vmsxbus_simple.mk
+	cp obj_dir/Vmsxbus_simple $(TARGET)
+
+clean:
+	rm -rf obj_dir $(TARGET) *.vcd
