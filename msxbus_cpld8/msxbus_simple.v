@@ -51,14 +51,18 @@
 //
 //  This module is the top level module for MAX II MSX BUS Master.
 //
+
+/* verilator lint_off CASEINCOMPLETE */
+
 // Modify port declaration
 module msxbus_simple (
     input CS,
     input CLK,
     input PCLK,
+    input RELEASE,
     inout [7:0] RDATA,
     input [1:0] SW,
-    input INT, BUSDIR, WAIT,
+    input INT, BUSDIR, WAIT,    // BUSDIR back to input
     inout [7:0] DATA,
     output reg RD,
     output reg WR,
@@ -69,12 +73,12 @@ module msxbus_simple (
     output reg [15:0] ADDR,
     output reg SLTSL1,
     output reg SLTSL2,
-    output reg SLTSL1_CS1,    // Changed from CS1
-    output reg SLTSL1_CS2,    // Changed from CS2
-    output reg SLTSL1_CS12,   // Changed from CS12
-    output reg SLTSL2_CS1,    // New
-    output reg SLTSL2_CS2,    // New
-    output reg SLTSL2_CS12,   // New
+    output SLTSL1_CS1,    // Changed from CS1
+    output SLTSL1_CS2,    // Changed from CS2
+    output SLTSL1_CS12,   // Changed from CS12
+    output SLTSL2_CS1,    // New
+    output SLTSL2_CS2,    // New
+    output SLTSL2_CS12,   // New
     output MCLK, SWOUT, RFSH,
     output reg M1
 );
@@ -83,7 +87,7 @@ module msxbus_simple (
 reg [7:0] input_data;
 reg [7:0] rdata_out;
 reg [7:0] CMD;        // Added CMD register
-reg [4:0] state;
+reg [3:0] state;
 reg rdata_drive;
 
 // Add data_drive register declaration
@@ -92,8 +96,16 @@ reg data_drive;
 
 // Add bidirectional control for DATA bus
 assign RDATA = rdata_drive ? rdata_out : 8'bZ;
-assign DATA = data_drive ? data_out : 8'bZ;
+// Modify DATA bus control based on RD/WR signals
+assign DATA = (!RD && WR) ? 8'bZ : (RD && !WR) ? data_out : 8'bZ;
+assign RDATA = rdata_drive ? rdata_out : 8'bZ;
 assign SWOUT = 1'b1;
+assign SLTSL1_CS1 = !SLTSL1 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+assign SLTSL1_CS2 = !SLTSL1 && (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+assign SLTSL1_CS12 = (!SLTSL1 && ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10))) ? 1'b0 : 1'b1;
+assign SLTSL2_CS1 = !SLTSL2 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+assign SLTSL2_CS2 = !SLTSL2 && (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+assign SLTSL2_CS12 = (!SLTSL2 && ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10))) ? 1'b0 : 1'b1;
 
 // Add to register declarations
 reg [1:0] delay_count;
@@ -104,7 +116,7 @@ localparam
     GET_CMD = 4'd1,
     GET_ADDR_L = 4'd2,
     GET_ADDR_H = 4'd3,
-    SLOT_ACCESS = 4'd4,
+    // SLOT_ACCESS = 4'd4,
     SEND_DATA = 4'd5,
     GET_DATA = 4'd6,
     WAIT_STATE = 4'd7,
@@ -131,6 +143,27 @@ always @(posedge CLK) begin
 end
 assign MCLK = mclk_out;
 
+// Add initial values for registers
+initial begin
+    state = IDLE;
+    RD = 1'b1;
+    WR = 1'b1;
+    MREQ = 1'b1;
+    IORQ = 1'b1;
+    SLTSL1 = 1'b1;
+    SLTSL2 = 1'b1;
+    M1 = 1'b1;
+    RESET = 1'b1;
+    rdata_drive = 1'b0;
+    data_drive = 1'b0;
+    data_out = 8'hFF;
+    rdata_out = 8'hFF;
+    RWAIT = 1'b1;
+    clk_divider = 8'd0;
+    mclk_out = 1'b0;
+    CMD = 8'h00;
+end
+
 // Modify always block to use only positive edge of CS
 always @(negedge PCLK or posedge CS) begin
     if (CS) begin
@@ -141,40 +174,22 @@ always @(negedge PCLK or posedge CS) begin
         IORQ <= 1'b1;
         SLTSL1 <= 1'b1;    // Added
         SLTSL2 <= 1'b1;    // Added
-		SLTSL1_CS1 = 1'b1;
-		SLTSL1_CS2 = 1'b1;
-		SLTSL1_CS12 = 1'b1;
-		SLTSL2_CS1 = 1'b1;
-		SLTSL2_CS2 = 1'b1;
-		SLTSL2_CS12 = 1'b1;
 		M1 = 1'b1;
         RESET <= 1'b1;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
-        data_out <= 8'bZ;
-        rdata_out <= 8'bZ;
         RWAIT <= 1'b1;
     end else begin
         case (state)
             GET_CMD: begin
                 CMD <= RDATA;
-                case (CMD[3:0])    // Only use lower 4 bits for command
-                    CMD_MEM_READ: begin // Memory Read
+                case (CMD[3:0])
+                    CMD_MEM_READ, CMD_IO_READ: begin
                         data_drive <= 1'b0;
-                        data_out <= 8'bZ;
+                        data_out <= 8'hff;
                         state <= GET_ADDR_L;
                     end
-                    CMD_IO_READ: begin // IO Read
-                        data_drive <= 1'b0;    
-                        data_out <= 8'bZ;
-                        state <= GET_ADDR_L;
-                    end
-                    CMD_MEM_WRITE: begin // Memory Write
-                        rdata_out <= 8'bZ;
-                        state <= SEND_DATA;
-                    end
-                    CMD_IO_WRITE: begin // IO Write
-                        rdata_out <= 8'bZ;
+                    CMD_MEM_WRITE, CMD_IO_WRITE: begin
                         state <= SEND_DATA;
                     end
                     CMD_RESET: begin // Reset
@@ -191,6 +206,7 @@ always @(negedge PCLK or posedge CS) begin
 
             SEND_DATA: begin
                 data_out <= RDATA;
+                data_drive <= 1'b0;    // Keep DATA bus in high-Z during setup
                 state <= GET_ADDR_L;
             end
 
@@ -201,62 +217,53 @@ always @(negedge PCLK or posedge CS) begin
 
             GET_ADDR_H: begin
                 ADDR[15:8] <= RDATA;
-                // Common control signals
+                // Control signals setup
                 MREQ <= CMD[1];
                 IORQ <= !CMD[1];
-                RD <= CMD[0];    
-                WR <= !CMD[0];     
+                if (CMD[0]) begin    // Write operation
+                    WR <= 1'b0;
+                    RD <= 1'b1;
+                end else begin       // Read operation
+                    RD <= 1'b0;
+                    WR <= 1'b1;
+                end
                 // State transition and data direction
-                if (!CMD[0]) begin
+                if (!CMD[0]) 
                     rdata_drive <= 1'b1;
-                    data_out <= 8'hff;
-                end else
+                else
                     data_drive <= 1'b1;    
                 // Memory access signals
                 if (!CMD[1]) begin  // If MREQ is active
                     if (!CMD[5]) begin // If NO_SLTSL
                         SLTSL1 <= CMD[4];
                         SLTSL2 <= !CMD[4];
-                        if (!CMD[4]) begin  // SLTSL1 active
-                            SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                            SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                            SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
-                        end else begin     // SLTSL2 active
-                            SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                            SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                            SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
-                        end
                     end
                 end
                 state <= GET_DATA;
             end
 
             GET_DATA: begin
-                if (!CMD[0])
+                if (!CMD[0]) begin    // Read operation
                     rdata_out <= DATA;
+                    data_drive <= 1'b0;    // Ensure DATA is in input mode
+                end
                 RWAIT <= WAIT;
                 if (WAIT)
                     state <= COMPLETE;
             end
 
             GET_STATUS: begin
-                rdata_out <= {INT, SW, 6'b0000, WAIT};  // INT in bit 7, SW[1:0] in bit 6-5, WAIT in bit 0
+                rdata_out <= {INT, SW, 4'b0000, WAIT};  // INT in bit 7, SW[1:0] in bit 6-5, WAIT in bit 0
                 state <= COMPLETE;
             end
 
-            COMPLETE: begin
+            IDLE, COMPLETE: begin
                 RD <= 1'b1;
                 WR <= 1'b1;
                 MREQ <= 1'b1;
                 IORQ <= 1'b1;
                 SLTSL1 <= 1'b1;    // Added
                 SLTSL2 <= 1'b1;    // Added
-                SLTSL1_CS1 = 1'b1;
-                SLTSL1_CS2 = 1'b1;
-                SLTSL1_CS12 = 1'b1;
-                SLTSL2_CS1 = 1'b1;
-                SLTSL2_CS2 = 1'b1;
-                SLTSL2_CS12 = 1'b1;
                 state <= IDLE;
             end
         endcase

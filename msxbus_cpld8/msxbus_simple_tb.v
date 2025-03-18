@@ -1,77 +1,55 @@
 `timescale 1ns/1ps
 
 module msxbus_simple_tb;
+    // Signals declaration
     reg CS, CLK, PCLK;
     reg [1:0] SW;
     reg INT, BUSDIR, WAIT;
     wire [7:0] RDATA;
     wire [7:0] DATA;
-    wire RD, WR, MREQ, IORQ, RESET;
+    wire RD, WR, MREQ, IORQ, RESET, RWAIT;
     wire [15:0] ADDR;
     wire SLTSL1, SLTSL2;
     wire SLTSL1_CS1, SLTSL1_CS2, SLTSL1_CS12;
     wire SLTSL2_CS1, SLTSL2_CS2, SLTSL2_CS12;
-    wire CS1, CS2, CS12;
     wire MCLK, SWOUT, RFSH, M1;
 
-    reg [7:0] rdata_reg;
-    reg [7:0] data_reg;
-    
-    assign RDATA = rdata_reg;
-    assign DATA = data_reg;
+    // Bidirectional bus control
+    reg [7:0] rdata_drive;
+    reg [7:0] data_drive;
+    assign RDATA = rdata_drive;
+    assign DATA = data_drive;
 
-    // Instantiate the msxbus_simple module
+    // Instance of module under test
     msxbus_simple uut (
-        .CS(CS),
-        .CLK(CLK),
-        .PCLK(PCLK),
-        .RDATA(RDATA),
-        .SW(SW),
-        .INT(INT),
-        .BUSDIR(BUSDIR),
-        .WAIT(WAIT),
+        .CS(CS), .CLK(CLK), .PCLK(PCLK),
+        .RDATA(RDATA), .SW(SW),
+        .INT(INT), .BUSDIR(BUSDIR), .WAIT(WAIT),
         .DATA(DATA),
-        .RD(RD),
-        .WR(WR),
-        .MREQ(MREQ),
-        .IORQ(IORQ),
-        .RESET(RESET),
+        .RD(RD), .WR(WR), .MREQ(MREQ), .IORQ(IORQ),
+        .RESET(RESET), .RWAIT(RWAIT),
         .ADDR(ADDR),
-        .SLTSL1(SLTSL1),
-        .SLTSL2(SLTSL2),
-        .SLTSL1_CS1(SLTSL1_CS1),
-        .SLTSL1_CS2(SLTSL1_CS2),
+        .SLTSL1(SLTSL1), .SLTSL2(SLTSL2),
+        .SLTSL1_CS1(SLTSL1_CS1), .SLTSL1_CS2(SLTSL1_CS2),
         .SLTSL1_CS12(SLTSL1_CS12),
-        .SLTSL2_CS1(SLTSL2_CS1),
-        .SLTSL2_CS2(SLTSL2_CS2),
+        .SLTSL2_CS1(SLTSL2_CS1), .SLTSL2_CS2(SLTSL2_CS2),
         .SLTSL2_CS12(SLTSL2_CS12),
-        .CS1(CS1),
-        .CS2(CS2),
-        .CS12(CS12),
-        .MCLK(MCLK),
-        .SWOUT(SWOUT),
-        .RFSH(RFSH),
+        .MCLK(MCLK), .SWOUT(SWOUT), .RFSH(RFSH),
         .M1(M1)
     );
 
-    // Add simulation directives for Quartus
-    initial begin
-        $dumpfile("msxbus_simple_tb.vcd");
-        $dumpvars(0, msxbus_simple_tb);
-    end
-
-    // Clock generation with more realistic timing (50MHz)
+    // Clock generation
     initial begin
         CLK = 0;
-        forever #10 CLK = ~CLK;  // 50MHz (20ns period)
+        forever #10 CLK = ~CLK;  // 50MHz clock
     end
 
     initial begin
         PCLK = 0;
-        forever #20 PCLK = ~PCLK;  // 25MHz
+        forever #100 PCLK = ~PCLK;  // 5MHz clock
     end
 
-    // Test stimulus with longer delays for stability
+    // Test stimulus
     initial begin
         // Initialize signals
         CS = 1;
@@ -79,43 +57,49 @@ module msxbus_simple_tb;
         INT = 0;
         BUSDIR = 0;
         WAIT = 1;
-        rdata_reg = 8'hZZ;
-        data_reg = 8'hAA;
+        rdata_drive = 8'hZZ;
+        data_drive = 8'hZZ;
 
-        #1000;  // Longer initial delay
+        // Wait for 100ns
+        #100;
 
-        // Start memory read transaction
+        // Test Memory Read
         CS = 0;
-        #100;
-        
-        // Send CMD_MEM_READ command (0x00)
-        rdata_reg = 8'h00;
-        #100;
-        
-        // Send address low byte (0x00)
-        rdata_reg = 8'h00;
-        #100;
-        
-        // Send address high byte (0x40)
-        rdata_reg = 8'h40;
-        #100;
+        rdata_drive = 8'h00;  // MEM_READ command
+        #20;
+        rdata_drive = 8'h34;  // Address Low
+        #20;
+        rdata_drive = 8'h40;  // Address High (0x4034)
+        #20;
+        data_drive = 8'hAA;   // Test data from MSX
+        WAIT = 0;
+        #40;
+        WAIT = 1;
+        #20;
 
-        // Wait for memory read operation
-        #200;
+        // Test Memory Write
+        CS = 0;
+        rdata_drive = 8'h01;  // MEM_WRITE command
+        #20;
+        rdata_drive = 8'hBB;  // Data to write
+        #20;
+        rdata_drive = 8'h56;  // Address Low
+        #20;
+        rdata_drive = 8'h80;  // Address High (0x8056)
+        WAIT = 0;
+        #40;
+        WAIT = 1;
+        #20;
 
-        // End transaction
-        CS = 1;
-        rdata_reg = 8'hZZ;
+        // Add more test cases as needed
 
-        // Wait for completion
-        #1000;
-        $stop;  // Use $stop instead of $finish for Quartus
+        $finish;
     end
 
-    // Enhanced monitoring
+    // Monitor changes
     initial begin
-        $monitor("Time=%0t CS=%b ADDR=%h DATA=%h RD=%b MREQ=%b SLTSL1=%b CS1=%b",
-                 $time, CS, ADDR, DATA, RD, MREQ, SLTSL1, CS1);
+        $monitor("Time=%0t CS=%b CMD=%h ADDR=%h DATA=%h RDATA=%h RD=%b WR=%b MREQ=%b IORQ=%b",
+                 $time, CS, uut.CMD, ADDR, DATA, RDATA, RD, WR, MREQ, IORQ);
     end
 
 endmodule
