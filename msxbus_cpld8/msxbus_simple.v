@@ -58,8 +58,9 @@ module msxbus_simple (
     input PCLK,
     inout [7:0] RDATA,
     input [1:0] SW,
-    input INT, BUSDIR, WAIT,
+    input INT, WAIT,
     inout [7:0] DATA,
+    output reg BUSDIR,
     output reg RD,
     output reg WR,
     output reg MREQ,
@@ -94,6 +95,12 @@ reg data_drive;
 assign RDATA = rdata_drive ? rdata_out : 8'bZ;
 assign DATA = data_drive ? data_out : 8'bZ;
 assign SWOUT = 1'b1;
+assign SLTSL1_CS1 = !SLTSL1 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+assign SLTSL1_CS2 <= !SLTSL1 && (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+assign SLTSL1_CS12 <= (!SLTSL1 && ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10))) ? 1'b0 : 1'b1;
+assign SLTSL2_CS1 = !SLTSL2 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
+assign SLTSL2_CS2 <= !SLTSL2 && (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
+assign SLTSL2_CS12 <= (!SLTSL2 && ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10))) ? 1'b0 : 1'b1;
 
 // Add to register declarations
 reg [1:0] delay_count;
@@ -141,12 +148,6 @@ always @(negedge PCLK or posedge CS) begin
         IORQ <= 1'b1;
         SLTSL1 <= 1'b1;    // Added
         SLTSL2 <= 1'b1;    // Added
-		SLTSL1_CS1 = 1'b1;
-		SLTSL1_CS2 = 1'b1;
-		SLTSL1_CS12 = 1'b1;
-		SLTSL2_CS1 = 1'b1;
-		SLTSL2_CS2 = 1'b1;
-		SLTSL2_CS12 = 1'b1;
 		M1 = 1'b1;
         RESET <= 1'b1;
         rdata_drive <= 1'b0;
@@ -158,23 +159,15 @@ always @(negedge PCLK or posedge CS) begin
         case (state)
             GET_CMD: begin
                 CMD <= RDATA;
-                case (CMD[3:0])    // Only use lower 4 bits for command
-                    CMD_MEM_READ: begin // Memory Read
+                case (CMD[3:0])
+                    CMD_MEM_READ, CMD_IO_READ: begin
+                        BUSDIR <= 1'b0;     // Set BUSDIR for input from MSX
                         data_drive <= 1'b0;
-                        data_out <= 8'bZ;
+                        data_out <= 8'hff;
                         state <= GET_ADDR_L;
                     end
-                    CMD_IO_READ: begin // IO Read
-                        data_drive <= 1'b0;    
-                        data_out <= 8'bZ;
-                        state <= GET_ADDR_L;
-                    end
-                    CMD_MEM_WRITE: begin // Memory Write
-                        rdata_out <= 8'bZ;
-                        state <= SEND_DATA;
-                    end
-                    CMD_IO_WRITE: begin // IO Write
-                        rdata_out <= 8'bZ;
+                    CMD_MEM_WRITE, CMD_IO_WRITE: begin
+                        BUSDIR <= 1'b1;     // Set BUSDIR for output to MSX
                         state <= SEND_DATA;
                     end
                     CMD_RESET: begin // Reset
@@ -191,6 +184,7 @@ always @(negedge PCLK or posedge CS) begin
 
             SEND_DATA: begin
                 data_out <= RDATA;
+                data_drive <= 1'b0;    // Keep DATA bus in high-Z during setup
                 state <= GET_ADDR_L;
             end
 
@@ -201,39 +195,38 @@ always @(negedge PCLK or posedge CS) begin
 
             GET_ADDR_H: begin
                 ADDR[15:8] <= RDATA;
-                // Common control signals
+                // Control signals setup
                 MREQ <= CMD[1];
                 IORQ <= !CMD[1];
-                RD <= CMD[0];    
-                WR <= !CMD[0];     
+                if (CMD[0]) begin    // Write operation
+                    WR <= 1'b0;
+                    RD <= 1'b1;
+                    BUSDIR <= 1'b1;  // Output to MSX
+                end else begin       // Read operation
+                    RD <= 1'b0;
+                    WR <= 1'b1;
+                    BUSDIR <= 1'b0;  // Input from MSX
+                end
                 // State transition and data direction
-                if (!CMD[0]) begin
+                if (!CMD[0]) 
                     rdata_drive <= 1'b1;
-                    data_out <= 8'hff;
-                end else
+                else
                     data_drive <= 1'b1;    
                 // Memory access signals
                 if (!CMD[1]) begin  // If MREQ is active
                     if (!CMD[5]) begin // If NO_SLTSL
                         SLTSL1 <= CMD[4];
                         SLTSL2 <= !CMD[4];
-                        if (!CMD[4]) begin  // SLTSL1 active
-                            SLTSL1_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                            SLTSL1_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                            SLTSL1_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
-                        end else begin     // SLTSL2 active
-                            SLTSL2_CS1 <= (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
-                            SLTSL2_CS2 <= (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
-                            SLTSL2_CS12 <= ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10)) ? 1'b0 : 1'b1;
-                        end
                     end
                 end
                 state <= GET_DATA;
             end
 
             GET_DATA: begin
-                if (!CMD[0])
+                if (!CMD[0]) begin    // Read operation
                     rdata_out <= DATA;
+                    data_drive <= 1'b0;    // Ensure DATA is in input mode
+                end
                 RWAIT <= WAIT;
                 if (WAIT)
                     state <= COMPLETE;
@@ -249,14 +242,9 @@ always @(negedge PCLK or posedge CS) begin
                 WR <= 1'b1;
                 MREQ <= 1'b1;
                 IORQ <= 1'b1;
+                BUSDIR <= 1'b0;      // Default to input mode
                 SLTSL1 <= 1'b1;    // Added
                 SLTSL2 <= 1'b1;    // Added
-                SLTSL1_CS1 = 1'b1;
-                SLTSL1_CS2 = 1'b1;
-                SLTSL1_CS12 = 1'b1;
-                SLTSL2_CS1 = 1'b1;
-                SLTSL2_CS2 = 1'b1;
-                SLTSL2_CS12 = 1'b1;
                 state <= IDLE;
             end
         endcase
