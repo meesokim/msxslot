@@ -120,25 +120,10 @@ void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
 }
 
 int main() {
-    int mem_fd;
     uint8_t buffer[16];
-
-    // Open /dev/mem
-    // if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC)) < 0) {
-    //     printf("Failed to open /dev/mem\n");
-    //     return -1;
-    // }
-    // Map GPIO registers
-    // gpio = mmap(NULL, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, mem_fd, GPIO_BASE);
-    // if (gpio == MAP_FAILED) {
-    //     printf("mmap failed\n");
-    //     close(mem_fd);
-    //     return -1;
-    // }
 
     if (!bcm2835_init()) return -1;
     gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
-
 
     msxbus_reset(0);
     usleep(10);

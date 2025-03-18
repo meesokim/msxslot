@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define LINES "----------------------------------------\n"
+#define LINES "-----------------------------------------------------\n"
 using namespace std;
 
 ReadfnPtr read = NULL;
@@ -72,8 +72,7 @@ int main(int argc, char **argv)
     // printf("status:%02x\n", msxstatus());
     if (init)
         init((char*)"sdcard");
-    read(0,0);
-    // reset(5);
+    reset(5);
     // read(RD_SLTSL1, 0);
     // reset(5);
     // if (read)
