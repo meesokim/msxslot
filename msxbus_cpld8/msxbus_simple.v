@@ -63,13 +63,13 @@ module msxbus_simple (
     inout [7:0] RDATA,
     input [1:0] SW,
     input INT, BUSDIR, WAIT,    // BUSDIR back to input
-    inout [7:0] DATA,
+    inout reg [7:0] DATA,
     output reg RD,
     output reg WR,
     output reg MREQ,
     output reg IORQ,
     output reg RESET,
-    output reg RWAIT,
+    output RWAIT,
     output reg [15:0] ADDR,
     output reg SLTSL1,
     output reg SLTSL2,
@@ -84,9 +84,9 @@ module msxbus_simple (
 );
 
 // Add CMD register to the reg declarations
-reg [7:0] input_data;
+reg [7:0] data;
 reg [7:0] rdata_out;
-reg [7:0] CMD;        // Added CMD register
+reg [7:0] cmd;        // Added CMD register
 reg [3:0] state;
 reg rdata_drive;
 
@@ -97,7 +97,7 @@ reg data_drive;
 // Add bidirectional control for DATA bus
 assign RDATA = rdata_drive ? rdata_out : 8'bZ;
 // Modify DATA bus control based on RD/WR signals
-assign DATA = (!RD && WR) ? 8'bZ : (RD && !WR) ? data_out : 8'bZ;
+// assign DATA = data_drive ? data_out : 8'bZ;
 assign RDATA = rdata_drive ? rdata_out : 8'bZ;
 assign SWOUT = 1'b1;
 assign SLTSL1_CS1 = !SLTSL1 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
@@ -106,9 +106,7 @@ assign SLTSL1_CS12 = (!SLTSL1 && ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b1
 assign SLTSL2_CS1 = !SLTSL2 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
 assign SLTSL2_CS2 = !SLTSL2 && (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
 assign SLTSL2_CS12 = (!SLTSL2 && ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10))) ? 1'b0 : 1'b1;
-
-// Add to register declarations
-reg [1:0] delay_count;
+assign RWAIT = WAIT;
 
 // Add new state to localparam
 localparam 
@@ -116,9 +114,8 @@ localparam
     GET_CMD = 4'd1,
     GET_ADDR_L = 4'd2,
     GET_ADDR_H = 4'd3,
-    // SLOT_ACCESS = 4'd4,
-    SEND_DATA = 4'd5,
-    GET_DATA = 4'd6,
+    WRITE_MSXBUS = 4'd5,
+    READ_MSXBUS = 4'd6,
     WAIT_STATE = 4'd7,
     GET_STATUS = 4'd8,    // New state
     COMPLETE = 4'd9,
@@ -158,10 +155,9 @@ initial begin
     data_drive = 1'b0;
     data_out = 8'hFF;
     rdata_out = 8'hFF;
-    RWAIT = 1'b1;
     clk_divider = 8'd0;
     mclk_out = 1'b0;
-    CMD = 8'h00;
+    cmd = 8'h00;
 end
 
 // Modify always block to use only positive edge of CS
@@ -176,22 +172,14 @@ always @(negedge PCLK or posedge CS) begin
         SLTSL2 <= 1'b1;    // Added
 		M1 = 1'b1;
         RESET <= 1'b1;
+        DATA <= 8'bZ;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
-        RWAIT <= 1'b1;
     end else begin
         case (state)
             GET_CMD: begin
-                CMD <= RDATA;
-                case (CMD[3:0])
-                    CMD_MEM_READ, CMD_IO_READ: begin
-                        data_drive <= 1'b0;
-                        data_out <= 8'hff;
-                        state <= GET_ADDR_L;
-                    end
-                    CMD_MEM_WRITE, CMD_IO_WRITE: begin
-                        state <= SEND_DATA;
-                    end
+                cmd <= RDATA;
+                case (cmd[3:0])
                     CMD_RESET: begin // Reset
                         RESET <= 1'b0;
                         state <= IDLE;
@@ -200,14 +188,8 @@ always @(negedge PCLK or posedge CS) begin
                         state <= GET_STATUS;
                         rdata_drive <= 1'b1;
                     end
-                    default: state <= IDLE;
+                    default: state <= GET_ADDR_L;
                 endcase
-            end
-
-            SEND_DATA: begin
-                data_out <= RDATA;
-                data_drive <= 1'b0;    // Keep DATA bus in high-Z during setup
-                state <= GET_ADDR_L;
             end
 
             GET_ADDR_L: begin
@@ -217,44 +199,44 @@ always @(negedge PCLK or posedge CS) begin
 
             GET_ADDR_H: begin
                 ADDR[15:8] <= RDATA;
-                // Control signals setup
-                MREQ <= CMD[1];
-                IORQ <= !CMD[1];
-                if (CMD[0]) begin    // Write operation
-                    WR <= 1'b0;
-                    RD <= 1'b1;
-                end else begin       // Read operation
-                    RD <= 1'b0;
-                    WR <= 1'b1;
+                if (cmd[0]) begin
+                    state <= WRITE_MSXBUS;
+                    rdata_drive <= 1'b0;
+                end else begin
+                    state <= READ_MSXBUS;
+                    DATA <= 8'hff;
                 end
-                // State transition and data direction
-                if (!CMD[0]) 
-                    rdata_drive <= 1'b1;
-                else
-                    data_drive <= 1'b1;    
-                // Memory access signals
-                if (!CMD[1]) begin  // If MREQ is active
-                    if (!CMD[5]) begin // If NO_SLTSL
-                        SLTSL1 <= CMD[4];
-                        SLTSL2 <= !CMD[4];
-                    end
-                end
-                state <= GET_DATA;
-            end
+            end 
 
-            GET_DATA: begin
-                if (!CMD[0]) begin    // Read operation
-                    rdata_out <= DATA;
-                    data_drive <= 1'b0;    // Ensure DATA is in input mode
+            WRITE_MSXBUS: begin
+                DATA <= RDATA;
+                MREQ <= cmd[1];
+                IORQ <= !cmd[1];
+                RD <= 1'b1;
+                WR <= 1'b0;
+                if (!cmd[1] && !cmd[5]) begin  // If MREQ is active
+                    SLTSL1 <= cmd[4];
+                    SLTSL2 <= !cmd[4];
                 end
-                RWAIT <= WAIT;
-                if (WAIT)
+                if (RELEASE)
                     state <= COMPLETE;
             end
 
-            GET_STATUS: begin
-                rdata_out <= {INT, SW, 4'b0000, WAIT};  // INT in bit 7, SW[1:0] in bit 6-5, WAIT in bit 0
-                state <= COMPLETE;
+            READ_MSXBUS: begin
+                // Control signals setup
+                DATA <= 8'hZ;
+                MREQ <= cmd[1];
+                IORQ <= !cmd[1];
+                RD <= 1'b0;
+                WR <= 1'b1;
+                rdata_drive <= 1'b1;
+                rdata_out <= DATA;
+                if (!cmd[1] && !cmd[5]) begin  // If MREQ is active
+                    SLTSL1 <= cmd[4];
+                    SLTSL2 <= !cmd[4];
+                end
+                if (RELEASE)
+                    state <= COMPLETE;
             end
 
             IDLE, COMPLETE: begin
@@ -262,8 +244,10 @@ always @(negedge PCLK or posedge CS) begin
                 WR <= 1'b1;
                 MREQ <= 1'b1;
                 IORQ <= 1'b1;
-                SLTSL1 <= 1'b1;    // Added
-                SLTSL2 <= 1'b1;    // Added
+                SLTSL1 <= 1'b1;
+                SLTSL2 <= 1'b1;
+                DATA <= 8'bZ;
+                rdata_drive <= 1'b0;
                 state <= IDLE;
             end
         endcase
