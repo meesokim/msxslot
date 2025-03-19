@@ -21,7 +21,7 @@ gpio8:
 	cc -o test_gpio8 msxbus_gpio8_test.c ../lib/libbcm2835.a
 
 spi:
-	cc -o test_spi msxbus_spi_test.c
+	cc -o test_spi msxbus_spi_test.c ../lib/libbcm2835.a
 
 rpi:
 	# Build the Docker image

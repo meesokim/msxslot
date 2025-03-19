@@ -129,14 +129,10 @@ localparam
 // External CLK input directly
 reg [7:0] clk_divider;
 reg mclk_out;
+reg bus_active;     // Bus cycle active flag
+
 // Clock divider using external CLK
-always @(posedge CLK) begin
-    if (clk_divider == 8'd13) begin  // Divide by 14 (50MHz/14 ≈ 3.571MHz)
-        clk_divider <= 8'd0;
-        mclk_out <= ~mclk_out;
-    end else begin
-        clk_divider <= clk_divider + 1'b1;
-    end
+always @(negedge CLK) begin
 end
 assign MCLK = mclk_out;
 
@@ -164,17 +160,11 @@ end
 always @(negedge PCLK or posedge CS) begin
     if (CS) begin
         state <= GET_CMD;
-        RD <= 1'b1;
-        WR <= 1'b1;
-        MREQ <= 1'b1;
-        IORQ <= 1'b1;
-        SLTSL1 <= 1'b1;    // Added
-        SLTSL2 <= 1'b1;    // Added
-		M1 = 1'b1;
         RESET <= 1'b1;
         DATA <= 8'bZ;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
+        bus_active <= 1'b0;
     end else begin
         case (state)
             GET_CMD: begin
@@ -201,56 +191,93 @@ always @(negedge PCLK or posedge CS) begin
                 ADDR[15:8] <= RDATA;
                 if (cmd[0]) begin
                     state <= WRITE_MSXBUS;
-                    rdata_drive <= 1'b0;
                 end else begin
                     state <= READ_MSXBUS;
-                    DATA <= 8'hff;
                 end
             end 
 
             WRITE_MSXBUS: begin
+                bus_active <= 1'b1;
                 DATA <= RDATA;
-                MREQ <= cmd[1];
-                IORQ <= !cmd[1];
-                RD <= 1'b1;
-                WR <= 1'b0;
-                if (!cmd[1] && !cmd[5]) begin  // If MREQ is active
-                    SLTSL1 <= cmd[4];
-                    SLTSL2 <= !cmd[4];
-                end
                 if (RELEASE)
                     state <= COMPLETE;
             end
 
             READ_MSXBUS: begin
                 // Control signals setup
+                bus_active <= 1'b1;
                 DATA <= 8'hZ;
-                MREQ <= cmd[1];
-                IORQ <= !cmd[1];
-                RD <= 1'b0;
-                WR <= 1'b1;
                 rdata_drive <= 1'b1;
                 rdata_out <= DATA;
-                if (!cmd[1] && !cmd[5]) begin  // If MREQ is active
-                    SLTSL1 <= cmd[4];
-                    SLTSL2 <= !cmd[4];
-                end
                 if (RELEASE)
                     state <= COMPLETE;
             end
 
             IDLE, COMPLETE: begin
-                RD <= 1'b1;
-                WR <= 1'b1;
-                MREQ <= 1'b1;
-                IORQ <= 1'b1;
-                SLTSL1 <= 1'b1;
-                SLTSL2 <= 1'b1;
                 DATA <= 8'bZ;
                 rdata_drive <= 1'b0;
+                bus_active <= 1'b0;
                 state <= IDLE;
             end
         endcase
+    end
+end
+
+// Clock divider and Z80 timing control
+reg [2:0] t_state;  // Z80 T-states counter
+
+// Clock generation for Z80 timing
+always @(negedge CLK) begin
+    if (CS) begin
+        t_state <= 3'd0;
+    end else if (bus_active) begin
+        if (t_state != 3'd2 && !WAIT)
+            t_state <= t_state + 1;
+    end
+end
+
+// Z80 bus timing control
+always @(negedge CLK) begin
+    if (bus_active) begin
+        case (t_state)
+            3'd0: begin  // T1 state
+                MREQ <= cmd[1];
+                IORQ <= !cmd[1];
+                M1 <= !cmd[7];    // M1 cycle if bit 7 set
+                if (state == READ_MSXBUS) begin
+                    RD <= 1'b0;
+                end                
+            end
+            3'd1: begin  // T2 state
+                if (!cmd[1] && !cmd[5]) begin  // Memory access
+                    SLTSL1 <= cmd[4];
+                    SLTSL2 <= !cmd[4];
+                end
+                if (state == WRITE_MSXBUS) begin
+                    WR <= 1'b0;
+                end
+            end
+            3'd2: begin  // T3 state - Data valid
+
+            end
+            3'd3: begin  // TW state - Wait if needed
+                MREQ <= 1'b1;
+                IORQ <= 1'b1;
+                RD <= 1'b1;
+                WR <= 1'b1;
+                SLTSL1 <= 1'b1;
+                SLTSL2 <= 1'b1;
+                M1 <= 1'b1;
+            end
+        endcase
+    end else begin
+        MREQ <= 1'b1;
+        IORQ <= 1'b1;
+        RD <= 1'b1;
+        WR <= 1'b1;
+        SLTSL1 <= 1'b1;
+        SLTSL2 <= 1'b1;
+        M1 <= 1'b1;
     end
 end
 
