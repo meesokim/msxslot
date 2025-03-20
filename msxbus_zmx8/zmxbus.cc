@@ -7,6 +7,7 @@ extern "C" {
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <stdint.h>
 #include "bcm2835.h"
 
@@ -46,7 +47,7 @@ static volatile uint32_t *gpio;
 
 void gpio_set_value8(uint8_t value) {
     CLR0(GPIO_DATA_MASK);
-    SET0(value);
+    SET0(value | RELEASE | PCLK);
     PULSE0(PCLK);
 }
 
@@ -82,34 +83,63 @@ uint8_t gpio_get_data(void) {
 
 void gpio_set_data8(uint8_t value) {
     uint32_t ret;
+    int tries = 5;
     CLR0(GPIO_DATA_MASK);
     SET0(value | RELEASE | PCLK);
     PULSE0(PCLK);
-    do {
-        PULSE0(PCLK);
-        ret = LEV0();
-    } while(!(ret & 1 << GPIO_WAIT));
-    SET0(RELEASE);
+    // do {
+    //     PULSE0(PCLK);
+    // } while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
+    // SET0(RELEASE);
+    // usleep(1);
     return;
 }
 
 extern "C" {
+    EXPORT unsigned char msxread(int cmd, unsigned short addr);
     EXPORT void reset(int ms) 
     {
         CLR0(CS);
         gpio_set_value8_delay(CMD_RESET, ms);
         SET0(CS);
+        msxread(0,0);
     }
     
+    // Add at the top with other defines
+    #define GPFSEL2 2
+    #define CM_GP0CTL 0x70
+    #define CM_GP0DIV 0x74
+    #define GPCLK0 20
+    // Modify init function
     EXPORT int init(char *path) 
     {
         if (!bcm2835_init()) return -1;
         gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
+        volatile uint32_t *cm = bcm2835_regbase(BCM2835_REGBASE_CLK);
+        
+        // Rest of the initialization
         SEL0(0x09249249);
         SEL1(0x09249249);
+        // Set GPIO20 to ALT5 (GPCLK0)
+        bcm2835_gpio_fsel(GPCLK0, BCM2835_GPIO_FSEL_ALT5);
+        // uint32_t fsel = gpio[GPFSEL2];
+        // fsel &= ~(7 << 0);  // Clear bits for GPIO20
+        // fsel |= (2 << 0);   // Set ALT5 function
+        // gpio[GPFSEL2] = fsel;
+        printf("gpio:%x\n", gpio);
+        if (cm != MAP_FAILED)
+        {
+            printf("cm:%x\n", cm);
+            // Configure GPCLK0 for 3.56MHz (500MHz / 140 ? 3.57MHz)
+            cm[CM_GP0CTL/4] = 0x5A000000;  // Stop GPCLK0
+            usleep(10);
+            cm[CM_GP0DIV/4] = 0x5A000000 | (140 << 12);  // Set divisor
+            cm[CM_GP0CTL/4] = 0x5A000005;  // Start GPCLK0 with PLLD source
+        }
+        
         CLR0(CS | PCLK | RELEASE | GPIO_DATA_MASK);
         SET0(CS | PCLK);
-	    return 0;
+        return 0;
     }
     
     EXPORT unsigned char msxread(int cmd, unsigned short addr) 
@@ -143,7 +173,8 @@ extern "C" {
         gpio_set_value8(addr >> 8);
         // Send data
         gpio_set_data8(value);
-        SET0(CS);
+        PULSE0(PCLK);
+        SET0(CS | PCLK | RELEASE);
         return;
     }
     

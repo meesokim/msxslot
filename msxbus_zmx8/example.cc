@@ -73,9 +73,23 @@ int main(int argc, char **argv)
     if (init)
         init((char*)"sdcard");
     reset(5);
-    // read(RD_SLTSL1, 0);
     // reset(5);
-    // if (read)
+    if (argc > 1)
+    {
+        char c = argv[1][0]; 
+        if (c == '1')
+            dump(0x4000, 0x200, 0);
+        else if (c == '2')
+        {
+            FILE *f = fopen("rpmp.rom", "wb");
+            for (int i = 0x4000; i < 0xc000; i++)
+            {
+                fprintf(f, "%c", read(RD_SLTSL1, i));                
+            }
+            fclose(f);
+        }
+    } 
+    else// if (read)
     {
         // dump(0x4000, 0x8000, 2);
         dump(0x6000, 0x20, 1);
