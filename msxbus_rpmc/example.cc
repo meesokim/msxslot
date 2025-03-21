@@ -25,11 +25,10 @@ void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
 void dump(uint16_t start, uint16_t size, uint8_t page )
 {
     uint8_t buffer[16], c = 0, b;
-    // write(WR_SLTSL1, start, page);
+    write(WR_SLTSL1, start, page);
     for (uint16_t addr = start; addr < start + size; addr += 16) {
         // Read 16 bytes
         for (int i = 0; i < 16; i++) {
-            // write(WR_SLTSL1, start, page);
             buffer[i] = read(RD_SLTSL1, addr + i);
         }
         print_memory_dump(addr, buffer, 16);
@@ -78,7 +77,7 @@ int main(int argc, char **argv)
     {
         char c = argv[1][0]; 
         if (c == '1')
-            dump(0x4000, 0x200, 0);
+            dump(0x4000, 0x400, 0);
         else if (c == '2')
         {
             FILE *f = fopen("rpmp.rom", "wb");
@@ -92,6 +91,8 @@ int main(int argc, char **argv)
     else// if (read)
     {
         // dump(0x4000, 0x8000, 2);
+        dump(0x4000, 0x20, 0);
+        printf(LINES);
         dump(0x6000, 0x20, 1);
         printf(LINES);
         dump(0x6000, 0x20, 2);
