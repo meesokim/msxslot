@@ -113,36 +113,6 @@ static volatile unsigned *gpio;
 /* This is the critical section object (statically allocated). */
 static pthread_mutex_t cs_mutex =  PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
-// inline void GPIO_SET(unsigned int b)
-// {
-// 	// __sync_synchronize();
-// 	gpio[GPIO_GPSET0] = b;
-// }
-
-// inline void GPIO_CLR(unsigned int b)
-// {
-// 	// __sync_synchronize();
-// 	gpio[GPIO_GPCLR0] = b;
-// }
-
-// inline uint32_t GPIO_GET(void) {
-// 	// __sync_synchronize();
-// 	return gpio[GPIO_GPLEV0];
-// }
-
-// inline void GPIO_SEL(int a, uint32_t b) 
-// {
-// 	// __sync_synchronize();
-// 	gpio[GPIO_GPFSEL0+a] = b;
-// }
-
-// struct timespec req, rem;
-
-// inline void nsleep(int n) 
-// {
-//     for(volatile int i=0; i < 5 * n; i++)
-//         GPIO_GET();
-// }
 
 void reset(int );
 int dir[28] = { 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 5,1,1,1,0,0,0,0 };
@@ -177,6 +147,7 @@ inline void SetAddress(unsigned short addr)
 unsigned char msxread(int cmd, unsigned short addr) 
 {
     if (addr > 0xc000) return 0xff;
+    __sync_synchronize();    
     //pthread_mutex_lock( &cs_mutex );    
     unsigned char b = 0xff;
     SetAddress(addr);
@@ -190,7 +161,7 @@ unsigned char msxread(int cmd, unsigned short addr)
         b = LEV0();
     } while(!(LEV0() & WAIT) || tries--);
     b = LEV0();
-    SET0(0xffff | LE_D);
+    SET0(0xff00 | LE_D);
     CLR0(LE_C); 
     //pthread_mutex_unlock( &cs_mutex );
     __sync_synchronize();    
@@ -201,6 +172,7 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
 {
     if (addr > 0xc000) return;
     //pthread_mutex_lock( &cs_mutex );    
+    __sync_synchronize();    
     SetAddress(addr);
     // __sync_synchronize();
     CLR0(DAT_DIR | 0xff | LE_D);
@@ -214,7 +186,7 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
     do {
         LEV0();
     } while(!(LEV0() & WAIT) || tries--);
-    SET0(MREQ | IORQ | WR | SLTSL1 | CS1 | CS2);
+    SET0(0xff00 | LE_D);
     CLR0(LE_C);
     //pthread_mutex_unlock( &cs_mutex );
     __sync_synchronize();

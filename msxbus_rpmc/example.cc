@@ -15,23 +15,25 @@ InitfnPtr init = NULL;
 ResetfnPtr reset = NULL;
 StatusfnPtr msxstatus = NULL;
 
-void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
+void print_memory_dump(uint16_t addr, uint8_t *data, uint8_t *data2, int len) {
     printf("%04X: ", addr);
     for (int i = 0; i < len; i++) {
-        printf("%02X ", data[i]);
+        printf(data[i] == data2[i] ? "%02X " : "\u001b[0m%02x\u001b[0m ", data[i]);
     }
     printf("\n");
 }
 void dump(uint16_t start, uint16_t size, uint8_t page )
 {
     uint8_t buffer[16], c = 0, b;
+    uint8_t buffer2[16];
     write(WR_SLTSL1, start, page);
     for (uint16_t addr = start; addr < start + size; addr += 16) {
         // Read 16 bytes
         for (int i = 0; i < 16; i++) {
             buffer[i] = read(RD_SLTSL1, addr + i);
+            buffer2[i] = read(RD_SLTSL1, addr + i);
         }
-        print_memory_dump(addr, buffer, 16);
+        print_memory_dump(addr, buffer, buffer2, 16);
     }    
 }
 
