@@ -93,6 +93,19 @@ extern "C" {
 #define WAIT		(1 << RC25)
 #define SW1			(1 << RC27)
 
+#define GPSEL0 0
+#define GPSEL1 1
+#define GPSET0 7
+#define GPCLR0 10
+#define GPLEV0 13
+
+#define CLR0(a) gpio[GPCLR0] = a
+#define SET0(a) gpio[GPSET0] = a
+#define SEL0(a) gpio[GPSEL0] = a 
+#define SEL1(a) gpio[GPSEL1] = a 
+#define PULSE0(a) gpio[GPCLR0] = a; gpio[GPSET0] = a
+#define LEV0() gpio[GPLEV0]
+
 static volatile unsigned *gpio;
 
 #include <pthread.h>
@@ -100,38 +113,38 @@ static volatile unsigned *gpio;
 /* This is the critical section object (statically allocated). */
 static pthread_mutex_t cs_mutex =  PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
-inline void GPIO_SET(unsigned int b)
-{
-	// __sync_synchronize();
-	gpio[GPIO_GPSET0] = b;
-}
+// inline void GPIO_SET(unsigned int b)
+// {
+// 	// __sync_synchronize();
+// 	gpio[GPIO_GPSET0] = b;
+// }
 
-inline void GPIO_CLR(unsigned int b)
-{
-	// __sync_synchronize();
-	gpio[GPIO_GPCLR0] = b;
-}
+// inline void GPIO_CLR(unsigned int b)
+// {
+// 	// __sync_synchronize();
+// 	gpio[GPIO_GPCLR0] = b;
+// }
 
-inline uint32_t GPIO_GET(void) {
-	// __sync_synchronize();
-	return gpio[GPIO_GPLEV0];
-}
+// inline uint32_t GPIO_GET(void) {
+// 	// __sync_synchronize();
+// 	return gpio[GPIO_GPLEV0];
+// }
 
-inline void GPIO_SEL(int a, uint32_t b) 
-{
-	// __sync_synchronize();
-	gpio[GPIO_GPFSEL0+a] = b;
-}
+// inline void GPIO_SEL(int a, uint32_t b) 
+// {
+// 	// __sync_synchronize();
+// 	gpio[GPIO_GPFSEL0+a] = b;
+// }
 
-struct timespec req, rem;
+// struct timespec req, rem;
 
-inline void nsleep(int n) 
-{
-    for(volatile int i=0; i < 5 * n; i++)
-        GPIO_GET();
-}
+// inline void nsleep(int n) 
+// {
+//     for(volatile int i=0; i < 5 * n; i++)
+//         GPIO_GET();
+// }
 
-void reset();
+void reset(int );
 int dir[28] = { 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 5,1,1,1,0,0,0,0 };
 void init(char *path) 
 {
@@ -145,7 +158,7 @@ void init(char *path)
         if (dir[i] < 2)
             bcm2835_gpio_set_pud(i, dir[i] ? BCM2835_GPIO_PUD_OFF : BCM2835_GPIO_PUD_UP);
 	} 
-    reset();
+    reset(10);
 
     // req.tv_sec = 0;
     // req.tv_nsec = 1000;
@@ -155,10 +168,10 @@ void init(char *path)
 inline void SetAddress(unsigned short addr) 
 {
     // GPIO_SEL(0, 0x49249249);
-    GPIO_CLR(0xffff);
-    GPIO_SET(LE_A | addr);
-    GPIO_CLR(LE_A); 
-    GPIO_SET(LE_C | 0xffff | DAT_DIR);
+    CLR0(0xffff);
+    SET0(LE_A | addr);
+    CLR0(LE_A); 
+    SET0(LE_C | 0xffff | DAT_DIR);
 }
 
 unsigned char msxread(int cmd, unsigned short addr) 
@@ -169,17 +182,18 @@ unsigned char msxread(int cmd, unsigned short addr)
     SetAddress(addr);
     // GPIO_SEL(0, 0x49000000);
     if (cmd < RD_IO)
-        GPIO_CLR(MREQ | RD | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | 0xff | LE_D);
+        CLR0(MREQ | RD | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | 0xff | LE_D);
     else
-        GPIO_CLR(IORQ | RD | 0xff | LE_D);
-    int tries = 5;
+        CLR0(IORQ | RD | 0xff | LE_D);
+    int tries = 2;
     do {
-        GPIO_GET();
-    } while(!(GPIO_GET() & WAIT) || tries--);
-    b = GPIO_GET();
-    GPIO_SET(0xffff | LE_D);
-    GPIO_CLR(LE_C); 
+        b = LEV0();
+    } while(!(LEV0() & WAIT) || tries--);
+    b = LEV0();
+    SET0(0xffff | LE_D);
+    CLR0(LE_C); 
     //pthread_mutex_unlock( &cs_mutex );
+    __sync_synchronize();    
     return b;
 }
 
@@ -189,34 +203,34 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
     //pthread_mutex_lock( &cs_mutex );    
     SetAddress(addr);
     // __sync_synchronize();
-    GPIO_CLR(DAT_DIR | 0xff | LE_D);
-    GPIO_CLR(DAT_DIR | 0xff | LE_D);
-    GPIO_SET(value | LE_C);
+    CLR0(DAT_DIR | 0xff | LE_D);
+    // GPIO_CLR(DAT_DIR | 0xff | LE_D);
+    SET0(value | LE_C);
     if (cmd < WR_IO)
-        GPIO_CLR(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | WR);
+        CLR0(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | WR);
     else
-        GPIO_CLR(IORQ | WR);
-    int tries = 5;
+        CLR0(IORQ | WR);
+    int tries = 3;
     do {
-        GPIO_GET();
-    } while(!(GPIO_GET() & WAIT) || tries--);
-    GPIO_SET(MREQ | WR | SLTSL1);
-    GPIO_CLR(LE_C);
+        LEV0();
+    } while(!(LEV0() & WAIT) || tries--);
+    SET0(MREQ | IORQ | WR | SLTSL1 | CS1 | CS2);
+    CLR0(LE_C);
     //pthread_mutex_unlock( &cs_mutex );
-    // __sync_synchronize();
+    __sync_synchronize();
 }
 
-void reset() 
+void reset(int ms) 
 {
-    GPIO_SET(LE_A | LE_C | LE_D | 0xffff);
-    GPIO_CLR(LE_A | LE_C);
-    GPIO_SET(RESET);
+    SET0(LE_A | LE_C | LE_D | 0xffff);
+    CLR0(LE_A | LE_C);
+    SET0(RESET);
     __sync_synchronize();    
-    GPIO_CLR(RESET);
-    for (volatile int i = 0; i < 20000; i++);
-    GPIO_SET(RESET);
-    GPIO_SET(LE_C | 0xff00);
-    GPIO_CLR(LE_C);     
+    CLR0(RESET);
+    for (volatile int i = 0; i < 2000 * ms; i++);
+    SET0(RESET);
+    SET0(LE_C | 0xff00);
+    CLR0(LE_C);     
     msxread(RD_IO, 0);
 }
 }
