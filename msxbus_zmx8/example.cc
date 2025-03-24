@@ -25,7 +25,7 @@ void print_memory_dump(uint16_t addr, uint8_t *data, int len) {
 void dump(uint16_t start, uint16_t size, uint8_t page )
 {
     uint8_t buffer[16], c = 0, b;
-    // write(WR_SLTSL1, start, page);
+    write(WR_SLTSL1, start, page);
     for (uint16_t addr = start; addr < start + size; addr += 16) {
         // Read 16 bytes
         for (int i = 0; i < 16; i++) {
@@ -34,6 +34,20 @@ void dump(uint16_t start, uint16_t size, uint8_t page )
         }
         print_memory_dump(addr, buffer, 16);
     }    
+}
+
+int check_page(char *first)
+{
+    int nerror = 0;
+    for (int i = 0; i < 20; i++)
+    {
+        write(WR_SLTSL1, 0x6000, i);
+        if (first[i] != read(RD_SLTSL1, 0x6000+i))
+        {
+            nerror++;
+        }
+    }
+    return nerror;
 }
 
 int main(int argc, char **argv)
@@ -46,30 +60,16 @@ int main(int argc, char **argv)
         printf("DLL open error!!\n");
         exit(1);
     }
-    // init = (InitfnPtr)GetZemmixFunc(hDLL, (char*)MSXINIT);
-    // if (!init)
-    // {
-    // #if ! defined(WIN32)
-    //     if ((error = dlerror()) != NULL)  {
-    //         fputs(error, stderr);
-    //         fputc('\n', stderr);
-    //         exit(1);
-    //     }    
-    // #endif
-    // }
     reset = (ResetfnPtr)GetZemmixFunc(hDLL, (char*)MSXRESET);
     read = (ReadfnPtr)GetZemmixFunc(hDLL, (char*)MSXREAD);
     write = (WritefnPtr)GetZemmixFunc(hDLL, (char*)MSXWRITE);
     msxstatus = (StatusfnPtr)GetZemmixFunc(hDLL, (char*)MSXSTATUS);
     init = (InitfnPtr)GetZemmixFunc(hDLL, (char*)MSXINIT);
-    printf("read:%llx\n", (long long unsigned int)read);
-    printf("write:%llx\n", (long long unsigned int)write);
-    printf("init:%llx\n", (long long unsigned int)init);
-    printf("reset:%llx\n", (long long unsigned int)reset);
-    printf("status:%llx\n", (long long unsigned int)msxstatus);
-    // msxstatus();
-    // exit(0);    
-    // printf("status:%02x\n", msxstatus());
+    // printf("read:%llx\n", (long long unsigned int)read);
+    // printf("write:%llx\n", (long long unsigned int)write);
+    // printf("init:%llx\n", (long long unsigned int)init);
+    // printf("reset:%llx\n", (long long unsigned int)reset);
+    // printf("status:%llx\n", (long long unsigned int)msxstatus);
     if (init)
         init((char*)"sdcard");
     reset(5);
@@ -92,24 +92,34 @@ int main(int argc, char **argv)
     else// if (read)
     {
         // dump(0x4000, 0x8000, 2);
-        dump(0x6000, 0x20, 1);
-        printf(LINES);
-        dump(0x6000, 0x20, 2);
-        printf(LINES);
-        dump(0x6000, 0x20, 3);
-        printf(LINES);
-        dump(0x8000, 0x20, 1);
-        printf(LINES);
-        dump(0x8000, 0x20, 2);
-        printf(LINES);
-        dump(0x8000, 0x20, 3);
-        printf(LINES);
-        dump(0xa000, 0x20, 1);
-        printf(LINES);
-        dump(0xa000, 0x20, 2);
-        printf(LINES);
-        dump(0xa000, 0x20, 3);
-        printf(LINES);
+        char first[20];
+        int nerror = 0;
+        for (int i = 0; i < 20; i++)
+        {
+            write(WR_SLTSL1, 0x6000, i);
+            first[i] = read(RD_SLTSL1, 0x6000+i);
+        }
+        for (int i = 0; i < 1000; i++)
+            nerror += check_page(first);
+        printf("Error=%d\n", nerror);
+        // dump(0x6000, 0x20, 1);
+        // printf(LINES);
+        // dump(0x6000, 0x20, 2);
+        // printf(LINES);
+        // dump(0x6000, 0x20, 3);
+        // printf(LINES);
+        // dump(0x8000, 0x20, 1);
+        // printf(LINES);
+        // dump(0x8000, 0x20, 2);
+        // printf(LINES);
+        // dump(0x8000, 0x20, 3);
+        // printf(LINES);
+        // dump(0xa000, 0x20, 1);
+        // printf(LINES);
+        // dump(0xa000, 0x20, 2);
+        // printf(LINES);
+        // dump(0xa000, 0x20, 3);
+        // printf(LINES);
     }
     CloseZemmix(hDLL);
     return 0;

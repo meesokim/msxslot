@@ -138,25 +138,26 @@ void init(char *path)
 inline void SetAddress(unsigned short addr) 
 {
     // GPIO_SEL(0, 0x49249249);
-    CLR0(0xffff);
-    SET0(LE_A | addr);
+    CLR0(0xff);
+    SET0(addr & 0xff | LE_A);
+    CLR0(0xff00);
+    SET0(addr & 0xff00);
     CLR0(LE_A); 
-    SET0(LE_C | 0xffff | DAT_DIR);
+    SET0(LE_C | LE_D | 0xffff | DAT_DIR);
 }
 
 unsigned char msxread(int cmd, unsigned short addr) 
 {
     if (addr > 0xc000) return 0xff;
-    __sync_synchronize();    
     //pthread_mutex_lock( &cs_mutex );    
     unsigned char b = 0xff;
     SetAddress(addr);
-    // GPIO_SEL(0, 0x49000000);
+    CLR0(RD | LE_D);
     if (cmd < RD_IO)
         CLR0(MREQ | RD | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | 0xff | LE_D);
     else
         CLR0(IORQ | RD | 0xff | LE_D);
-    int tries = 2;
+    int tries = 1;
     do {
         b = LEV0();
     } while(!(LEV0() & WAIT) || tries--);
@@ -164,42 +165,39 @@ unsigned char msxread(int cmd, unsigned short addr)
     SET0(0xff00 | LE_D);
     CLR0(LE_C); 
     //pthread_mutex_unlock( &cs_mutex );
-    __sync_synchronize();    
     return b;
 }
 
 void msxwrite(int cmd, unsigned short addr, unsigned char value)
 {
     if (addr > 0xc000) return;
-    //pthread_mutex_lock( &cs_mutex );    
-    __sync_synchronize();    
-    SetAddress(addr);
     // __sync_synchronize();
-    CLR0(DAT_DIR | 0xff | LE_D);
+    //pthread_mutex_lock( &cs_mutex );    
+    SetAddress(addr);
+    CLR0(0xff | LE_D | DAT_DIR);
     // GPIO_CLR(DAT_DIR | 0xff | LE_D);
-    SET0(value | LE_C);
+    SET0(value);
     if (cmd < WR_IO)
-        CLR0(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | WR);
+        CLR0(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1);
     else
-        CLR0(IORQ | WR);
-    int tries = 3;
+        CLR0(IORQ);
+    CLR0(WR | DAT_DIR | LE_C);
+    int tries = 5;
     do {
         LEV0();
     } while(!(LEV0() & WAIT) || tries--);
-    SET0(0xff00 | LE_D);
+    SET0(0xff00 | LE_C);
     CLR0(LE_C);
     //pthread_mutex_unlock( &cs_mutex );
-    __sync_synchronize();
 }
 
 void reset(int ms) 
 {
-    SET0(LE_A | LE_C | LE_D | 0xffff);
-    CLR0(LE_A | LE_C);
+    // SET0(LE_A | LE_C | LE_D | 0xffff);
+    // CLR0(LE_A | LE_C);
     SET0(RESET);
-    __sync_synchronize();    
     CLR0(RESET);
-    for (volatile int i = 0; i < 2000 * ms; i++);
+    for (int i = 0; i < 1000 * ms; i++) SET0(0);
     SET0(RESET);
     SET0(LE_C | 0xff00);
     CLR0(LE_C);     

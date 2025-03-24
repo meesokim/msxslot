@@ -23,9 +23,12 @@ DEBUGFLAGS = -O0 -D _DEBUG -shared ../lib/libbcm2835.a
 RELEASEFLAGS = libbcm2835.a -O2 -D DEBUG -combine -fwhole-program -shared 
 OBJS = $(TARGET).o $(COBJS)
 
-all: $(TARGET).$(ZEMMIX_EXT) example $(LIBINFO)
+all: $(TARGET).$(ZEMMIX_EXT) example zmxdump $(LIBINFO)
 
 example: example.o zmx.o 
+	$(CXX) $(FLAGS) -o $@ $^ $(LDFLAGS)
+
+zmxdump: zmxdump.o zmx.o
 	$(CXX) $(FLAGS) -o $@ $^ $(LDFLAGS)
 
 libinfo: libinfo.o

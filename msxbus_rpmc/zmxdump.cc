@@ -9,11 +9,16 @@ int main(int argc, char **argv)
 {
     char *error;
     char dir[256];
+    bool output = true;
     ReadfnPtr read = NULL;
     WritefnPtr write = NULL;
     InitfnPtr init = NULL;
     ResetfnPtr reset = NULL;
-    strcpy(dir, argc > 1 ? argv[1] : "sdcard");
+    if (argc > 1 && argv[1][0] == '-') {
+        output = false;
+    } else {
+        strcpy(dir, argc > 1 ? argv[1] : "sdcard");
+    }
     void *hDLL = OpenZemmix((char*)ZEMMIX_BUS, RTLD_LAZY);
     if (!hDLL)
     {
@@ -32,25 +37,29 @@ int main(int argc, char **argv)
     if (init) {
         init(dir);
         if (read) {
-            unsigned char b, data[10];
+            unsigned char b, c, data[10];
             for (int i = 0x4000; i < 0xc000; i++)
             {
-                if (i % 16 == 0)
+                if (i % 16 == 0 && output)
                     printf("%04x:", i);
-		int sum = 0;
-                for (int j = 0; j < 20; j++)
+		        int sum = 0;
+                bool e = false;
+                for (int j = 0; j < 10; j++)
                 {
                     b = read(RD_SLTSL1, i);
-                    sum += b;
+                    if ( j > 0 && c != b)
+                    {
+                        e = true;
+                    }
+                    c = b;
                 }
-		if (sum/20 == b)
-                	printf("\u001b[0m%02x\u001b[0m ", b);
-		else
-		{
-			printf("\u001b[31m%02x\u001b[0m ", b);
-			nerror++;
-		}
-                if ((i + 1) % 16 == 0)
+                if (e)
+                    nerror++;
+                if (output)
+                {
+                    printf(e ? "\u001b[31m%02x\u001b[0m " : "\u001b[0m%02x\u001b[0m ", b);
+                }
+                if ((i + 1) % 16 == 0 && output)
                     printf("\n");
             }
         }
@@ -60,6 +69,6 @@ int main(int argc, char **argv)
             write(WR_SLTSL1, 0x4000, 0x1);
     }
     CloseZemmix(hDLL);
-    printf("Ërror:%d\n", nerror);
+    printf("\nËrror:%d\n", nerror);
     return 0;
 }

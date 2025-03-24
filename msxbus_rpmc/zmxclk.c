@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     if (!bcm2835_init()) return -1;
     gpio = bcm2835_regbase(BCM2835_REGBASE_GPIO);
 	unsigned *gclk_base = bcm2835_regbase(BCM2835_REGBASE_CLK);
-	printf("gclk_base:%x(%d)\n", gclk_base,BCM2835_REGBASE_CLK);
+	printf("gclk_base:%x\n", gclk_base);
 	int speed_hz[] = { 0, 19200000, 0, 0, 0, 100000000, 500000000, 216000000, 0};
 	if (gclk_base != MAP_FAILED)
 	{
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 		// 6     500 MHz  PLLD
 		// 7     216 MHz  HDMI auxiliary
 		// 8-15  0 Hz     Ground
-		int speed_id = 5;
+		int speed_id = 6;
 		src_freq = speed_hz[speed_id];
 		freq = 36500000;
 		divi = src_freq / freq ;

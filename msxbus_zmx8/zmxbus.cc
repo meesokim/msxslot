@@ -68,30 +68,26 @@ uint8_t gpio_get_value8(void) {
     return ret;
 }
 
-uint8_t gpio_get_data(void) {
+uint8_t gpio_get_data8(void) {
     uint32_t ret;
-    int tries = 5;
+    int tries = 2;
     CLR0(RELEASE | GPIO_DATA_MASK);
-    do {
-        PULSE0(PCLK);
-        ret = LEV0();
-    } while(!(ret & 1 << GPIO_WAIT) || tries--);
+    do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
+    ret = LEV0();
     SET0(RELEASE);
     PULSE0(PCLK);
-    return LEV0();
+    return ret;
 }
 
 void gpio_set_data8(uint8_t value) {
-    uint32_t ret;
-    int tries = 5;
-    CLR0(GPIO_DATA_MASK);
-    SET0(value | RELEASE | PCLK);
+    int tries = 3;
+    CLR0(GPIO_DATA_MASK | RELEASE);
+    SET0(value | PCLK);
     PULSE0(PCLK);
-    // do {
-    //     PULSE0(PCLK);
-    // } while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
-    // SET0(RELEASE);
-    // usleep(1);
+    SET0(RELEASE);
+    // do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
+    PULSE0(PCLK);
+    // while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
     return;
 }
 
@@ -144,9 +140,8 @@ extern "C" {
     
     EXPORT unsigned char msxread(int cmd, unsigned short addr) 
     {
-        uint8_t data = 0, status;
-        int retry = 255;
-        CLR0(CS);
+        uint8_t data = 0;
+        CLR0(CS | 1 << GPIO_RELEASE);
         // Send command
         gpio_set_value8(cmd);
         // Send low address byte
@@ -154,10 +149,9 @@ extern "C" {
         // Send high address byte
         gpio_set_value8(addr >> 8);
         // Wait for acknowledgment (0xFF)
-        data = gpio_get_data();
+        data = gpio_get_data8();
         // Deassert CS
-        SET0(CS);
-    
+        SET0(CS | PCLK);
         return data;
     }
     
@@ -173,8 +167,8 @@ extern "C" {
         gpio_set_value8(addr >> 8);
         // Send data
         gpio_set_data8(value);
-        PULSE0(PCLK);
-        SET0(CS | PCLK | RELEASE);
+        // Send data
+        SET0(CS | PCLK);
         return;
     }
     
