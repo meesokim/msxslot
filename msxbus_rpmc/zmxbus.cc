@@ -179,8 +179,10 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
     SET0(value);
     if (cmd < WR_IO)
         CLR0(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1);
-    else
+    else {
         CLR0(IORQ);
+	printf("WI:%02x,%02x\n", addr, value);
+    }
     CLR0(WR | DAT_DIR | LE_C);
     int tries = 5;
     do {
@@ -188,6 +190,7 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
     } while(!(LEV0() & WAIT) || tries--);
     SET0(0xff00 | LE_C);
     CLR0(LE_C);
+    // printf("WI:%02x,%02x\n", addr, value);
     //pthread_mutex_unlock( &cs_mutex );
 }
 

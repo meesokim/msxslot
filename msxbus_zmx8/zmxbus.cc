@@ -71,21 +71,18 @@ uint8_t gpio_get_value8(void) {
 uint8_t gpio_get_data8(void) {
     uint32_t ret;
     int tries = 2;
-    CLR0(RELEASE | GPIO_DATA_MASK);
-    do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
-    ret = LEV0();
-    SET0(RELEASE);
+    // CLR0(RELEASE | GPIO_DATA_MASK);
+    do { PULSE0(PCLK); ret = LEV0(); } while(!(ret & 1 << GPIO_WAIT));
     PULSE0(PCLK);
+    ret = LEV0();
     return ret;
 }
 
 void gpio_set_data8(uint8_t value) {
     int tries = 3;
     CLR0(GPIO_DATA_MASK | RELEASE);
-    SET0(value | PCLK);
-    PULSE0(PCLK);
-    SET0(RELEASE);
-    // do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
+    SET0(value);
+    // do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT));
     PULSE0(PCLK);
     // while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
     return;
@@ -161,12 +158,14 @@ extern "C" {
         CLR0(CS | 1 << GPIO_RELEASE);
         // Send command
         gpio_set_value8(cmd);
-        // Send low address byte
+        // // // Send data
+        gpio_set_value8(value);
+        // // // Send low address byte
         gpio_set_value8(addr);
-        // Send high address byte
+        // // Send high address byte
         gpio_set_value8(addr >> 8);
-        // Send data
-        gpio_set_data8(value);
+        do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT));
+        // PULSE0(PCLK);
         // Send data
         SET0(CS | PCLK);
         return;
