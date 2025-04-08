@@ -63,7 +63,7 @@ module msxbus_simple (
     inout [7:0] RDATA,
     input [1:0] SW,
     input INT, BUSDIR, WAIT,    // BUSDIR back to input
-    inout reg [7:0] DATA,
+    inout [7:0] DATA,
     output reg RD,
     output reg WR,
     output reg MREQ,
@@ -97,8 +97,7 @@ reg data_drive;
 // Add bidirectional control for DATA bus
 assign RDATA = rdata_drive ? rdata_out : 8'bZ;
 // Modify DATA bus control based on RD/WR signals
-// assign DATA = data_drive ? data_out : 8'bZ;
-assign RDATA = rdata_drive ? rdata_out : 8'bZ;
+assign DATA = data_drive ? data_out : 8'bZ;
 assign SWOUT = 1'b1;
 assign SLTSL1_CS1 = !SLTSL1 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
 assign SLTSL1_CS2 = !SLTSL1 && (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
@@ -107,19 +106,21 @@ assign SLTSL2_CS1 = !SLTSL2 && (ADDR[15:14] == 2'b01) ? 1'b0 : 1'b1;
 assign SLTSL2_CS2 = !SLTSL2 && (ADDR[15:14] == 2'b10) ? 1'b0 : 1'b1;
 assign SLTSL2_CS12 = (!SLTSL2 && ((ADDR[15:14] == 2'b01) || (ADDR[15:14] == 2'b10))) ? 1'b0 : 1'b1;
 assign RWAIT = WAIT;
+assign RFSH = 1'b1;
 
 // Add new state to localparam
 localparam 
     IDLE = 4'd0,
     GET_CMD = 4'd1,
-    GET_ADDR_L = 4'd2,
-    GET_ADDR_H = 4'd3,
-    WRITE_DATA = 4'd4,
+    GET_DATA = 4'd2,
+    GET_ADDR_L = 4'd3,
+    GET_ADDR_H = 4'd4,
     WRITE_MSXBUS = 4'd5,
     READ_MSXBUS = 4'd6,
-    WAIT_STATE = 4'd7,
-    GET_STATUS = 4'd8,    // New state
-    COMPLETE = 4'd9,
+    WRITE_WAIT = 4'd7,
+    READ_WAIT = 4'd8,
+    GET_STATUS = 4'd9,    // New state
+    COMPLETE = 4'd10,
     CMD_MEM_READ = 4'd0,
     CMD_MEM_WRITE = 4'd1,
     CMD_IO_READ = 4'd2,
@@ -173,7 +174,7 @@ always @(negedge PCLK or posedge CS) begin
         SLTSL2 <= 1'b1;    // Added
 		M1 = 1'b1;
         RESET <= 1'b1;
-        DATA <= 8'bZ;
+//        DATA <= 8'bZ;
         rdata_drive <= 1'b0;
 		data_drive <= 1'b0;
     end else begin
@@ -189,8 +190,19 @@ always @(negedge PCLK or posedge CS) begin
                         state <= GET_STATUS;
                         rdata_drive <= 1'b1;
                     end
-                    default: state <= GET_ADDR_L;
+                    CMD_MEM_WRITE, CMD_IO_WRITE: begin // Write data
+                        state <= GET_DATA;
+                    end
+                    default: begin 
+//                        DATA <= 8'hZ;
+                        state <= GET_ADDR_L;
+                    end
                 endcase
+            end
+
+            GET_DATA: begin
+                data_out <= RDATA;
+                state <= GET_ADDR_L;
             end
 
             GET_ADDR_L: begin
@@ -200,48 +212,37 @@ always @(negedge PCLK or posedge CS) begin
 
             GET_ADDR_H: begin
                 ADDR[15:8] <= RDATA;
+                if (!cmd[1] && !cmd[5]) begin  // If MREQ is active
+                    SLTSL1 <= cmd[4];
+                    SLTSL2 <= !cmd[4];
+                end
+                MREQ <= cmd[1];
+                IORQ <= !cmd[1];
                 if (cmd[0]) begin
-                    state <= WRITE_DATA;
-                    rdata_drive <= 1'b0;
+                    state <= WRITE_MSXBUS;
+                    data_drive <= 1'b1;
+                    WR <= 1'b0;
                 end else begin
                     state <= READ_MSXBUS;
-                    DATA <= 8'hff;
+                    RD <= 1'b0;
                 end
             end 
 
-            WRITE_DATA: begin
-                DATA <= RDATA;
-                state <= WRITE_MSXBUS;
-            end
-
-            WRITE_MSXBUS: begin
-                DATA <= RDATA;
-                MREQ <= cmd[1];
-                IORQ <= !cmd[1];
-                RD <= 1'b1;
-                WR <= 1'b0;
-                if (!cmd[1] && !cmd[5]) begin  // If MREQ is active
-                    SLTSL1 <= cmd[4];
-                    SLTSL2 <= !cmd[4];
-                end
-                if (RELEASE)
+            WRITE_MSXBUS, WRITE_WAIT: begin
+                if (state == WRITE_MSXBUS)
+                    state <= WRITE_WAIT;
+                if (WAIT && state == WRITE_WAIT)
                     state <= COMPLETE;
             end
 
-            READ_MSXBUS: begin
+            READ_MSXBUS, READ_WAIT: begin
                 // Control signals setup
-                DATA <= 8'hZ;
-                MREQ <= cmd[1];
-                IORQ <= !cmd[1];
-                RD <= 1'b0;
-                WR <= 1'b1;
+                // DATA <= 8'hZ;
                 rdata_drive <= 1'b1;
                 rdata_out <= DATA;
-                if (!cmd[1] && !cmd[5]) begin  // If MREQ is active
-                    SLTSL1 <= cmd[4];
-                    SLTSL2 <= !cmd[4];
-                end
-                if (RELEASE)
+                if (state == READ_MSXBUS)
+                    state <= READ_WAIT;
+                if (WAIT && state == READ_WAIT)
                     state <= COMPLETE;
             end
 
@@ -252,9 +253,10 @@ always @(negedge PCLK or posedge CS) begin
                 IORQ <= 1'b1;
                 SLTSL1 <= 1'b1;
                 SLTSL2 <= 1'b1;
-                DATA <= 8'bZ;
+//                DATA <= 8'bZ;
                 RESET <= 1'b1;
                 rdata_drive <= 1'b0;
+                data_drive <= 1'b0;
                 state <= IDLE;
             end
         endcase
