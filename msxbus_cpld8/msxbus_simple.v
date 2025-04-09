@@ -177,6 +177,7 @@ always @(negedge RAS_RD or negedge RAS_WR or posedge RELEASE) begin
         state <= IDLE;
         rdata_out <= 8'h00;
         data_drive <= 1'b0;
+        rdata_drive <= 1'b0;
     end else begin
         if (!RAS_WR) begin  // Write operation from FT323H
             rdata_drive <= 1'b0;
@@ -220,7 +221,6 @@ always @(negedge RAS_RD or negedge RAS_WR or posedge RELEASE) begin
                 end
             endcase
         end else if (!RAS_RD) begin  // Read operation from FT323H
-            rdata_drive = 1'b1;
             if (!cmd[0]) begin
                 if (WAIT) begin
                     if (wait_check == 1'b0) begin
@@ -241,6 +241,7 @@ always @(negedge RAS_RD or negedge RAS_WR or posedge RELEASE) begin
                     rdata_out = 8'h00;
                 end
             end
+            rdata_drive = 1'b1;
             if (state == COMPLETE) begin
                 RD <= 1'b1;
                 WR <= 1'b1;
