@@ -14,8 +14,8 @@ extern "C" {
 #define GPIO_DATA_MASK 0xFFFF
 #define GPIO_RELEASE 19
 #define GPIO_WAIT 18
-#define GPIO_CS 17
-#define GPIO_CLK 16
+#define GPIO_RAS_RD 17
+#define GPIO_RAS_WR 16
 #define GPIO_DATA_START 0
 #define GPIO_DATA_END 7
 
@@ -35,8 +35,8 @@ extern "C" {
 
 static volatile uint32_t *gpio;
 
-#define PCLK (1 << GPIO_CLK)
-#define CS (1 << GPIO_CS)
+#define RAS_WR (1 << GPIO_RAS_WR)
+#define RAS_RD (1 << GPIO_RAS_RD)
 #define RELEASE (1 << GPIO_RELEASE)
 #define CLR0(a) gpio[GPCLR0] = a
 #define SET0(a) gpio[GPSET0] = a
@@ -47,43 +47,51 @@ static volatile uint32_t *gpio;
 
 void gpio_set_value8(uint8_t value) {
     CLR0(GPIO_DATA_MASK);
-    SET0(value | RELEASE | PCLK);
-    PULSE0(PCLK);
+    SET0(value | RAS_WR | RAS_RD);
+    PULSE0(RAS_WR);
 }
 
 void gpio_set_value8_delay(uint8_t value, int ms) {
     CLR0(GPIO_DATA_MASK);
     SET0(value);
-    CLR0(PCLK);
+    CLR0(RAS_WR);
     usleep(ms);
-    SET0(PCLK);
+    SET0(RAS_WR);
 }
 
 uint8_t gpio_get_value8(void) {
     // Set GPIO 0-7 to input
     uint8_t ret;
-    CLR0(PCLK);
+    CLR0(RAS_RD);
     ret = LEV0();
-    SET0(PCLK);
+    SET0(RAS_RD);
     return ret;
 }
 
 uint8_t gpio_get_data8(void) {
     uint32_t ret;
     int tries = 2;
+    SET0(RAS_RD | RAS_WR);
     // CLR0(RELEASE | GPIO_DATA_MASK);
-    do { PULSE0(PCLK); ret = LEV0(); } while(!(ret & 1 << GPIO_WAIT));
-    PULSE0(PCLK);
+    do { CLR0(RAS_RD); ret = LEV0(); SET0(RAS_RD); } while(ret&0xff!=0xff);
+    CLR0(RAS_RD);
     ret = LEV0();
+    ret = LEV0();
+    ret = LEV0();
+    ret = LEV0();
+    ret = LEV0();
+    ret = LEV0();
+    SET0(RAS_RD);
+    PULSE0(RAS_RD);
     return ret;
 }
 
 void gpio_set_data8(uint8_t value) {
     int tries = 3;
-    CLR0(GPIO_DATA_MASK | RELEASE);
+    CLR0(GPIO_DATA_MASK);
     SET0(value);
     // do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT));
-    PULSE0(PCLK);
+    PULSE0(RAS_WR);
     // while(!(LEV0() & 1 << GPIO_WAIT) || tries--);
     return;
 }
@@ -92,9 +100,7 @@ extern "C" {
     EXPORT unsigned char msxread(int cmd, unsigned short addr);
     EXPORT void reset(int ms) 
     {
-        CLR0(CS);
-        gpio_set_value8_delay(CMD_RESET, ms);
-        SET0(CS);
+        gpio_set_value8(CMD_RESET);
         msxread(0,0);
     }
     
@@ -114,31 +120,31 @@ extern "C" {
         SEL0(0x09249249);
         SEL1(0x09249249);
         // Set GPIO20 to ALT5 (GPCLK0)
-        bcm2835_gpio_fsel(GPCLK0, BCM2835_GPIO_FSEL_ALT5);
+        // bcm2835_gpio_fsel(GPCLK0, BCM2835_GPIO_FSEL_ALT5);
         // uint32_t fsel = gpio[GPFSEL2];
         // fsel &= ~(7 << 0);  // Clear bits for GPIO20
         // fsel |= (2 << 0);   // Set ALT5 function
         // gpio[GPFSEL2] = fsel;
-        printf("gpio:%x\n", gpio);
-        if (cm != MAP_FAILED)
-        {
-            printf("cm:%x\n", cm);
-            // Configure GPCLK0 for 3.56MHz (500MHz / 140 ? 3.57MHz)
-            cm[CM_GP0CTL/4] = 0x5A000000;  // Stop GPCLK0
-            usleep(10);
-            cm[CM_GP0DIV/4] = 0x5A000000 | (140 << 12);  // Set divisor
-            cm[CM_GP0CTL/4] = 0x5A000005;  // Start GPCLK0 with PLLD source
-        }
+        // printf("gpio:%x\n", gpio);
+        // if (cm != MAP_FAILED)
+        // {
+        //     printf("cm:%x\n", cm);
+        //     // Configure GPCLK0 for 3.56MHz (500MHz / 140 ? 3.57MHz)
+        //     cm[CM_GP0CTL/4] = 0x5A000000;  // Stop GPCLK0
+        //     usleep(10);
+        //     cm[CM_GP0DIV/4] = 0x5A000000 | (140 << 12);  // Set divisor
+        //     cm[CM_GP0CTL/4] = 0x5A000005;  // Start GPCLK0 with PLLD source
+        // }
         
-        CLR0(CS | PCLK | RELEASE | GPIO_DATA_MASK);
-        SET0(CS | PCLK);
+        CLR0(GPIO_DATA_MASK);
+        SET0(RAS_RD | RAS_WR);
         return 0;
     }
     
     EXPORT unsigned char msxread(int cmd, unsigned short addr) 
     {
         uint8_t data = 0;
-        CLR0(CS | 1 << GPIO_RELEASE);
+        PULSE0(RELEASE);
         // Send command
         gpio_set_value8(cmd);
         // Send low address byte
@@ -147,15 +153,12 @@ extern "C" {
         gpio_set_value8(addr >> 8);
         // Wait for acknowledgment (0xFF)
         data = gpio_get_data8();
-        // Deassert CS
-        SET0(CS | PCLK);
         return data;
     }
     
     EXPORT void msxwrite(int cmd, unsigned short addr, unsigned char value)
     {
-        // Assert CS
-        CLR0(CS | 1 << GPIO_RELEASE);
+        PULSE0(RELEASE);
         // Send command
         gpio_set_value8(cmd);
         // // // Send data
@@ -164,20 +167,14 @@ extern "C" {
         gpio_set_value8(addr);
         // // Send high address byte
         gpio_set_value8(addr >> 8);
-        do { PULSE0(PCLK); } while(!(LEV0() & 1 << GPIO_WAIT));
-        // PULSE0(PCLK);
-        // Send data
-        SET0(CS | PCLK);
+        gpio_get_data8();
         return;
     }
     
     EXPORT unsigned char msxstatus()
     {
-        SET0(CS | PCLK);
-        CLR0(CS);
         gpio_set_value8(CMD_STATUS);
         uint8_t status = gpio_get_value8();
-        SET0(CS);
         return status;    
     }
 }
