@@ -145,6 +145,7 @@ extern "C" {
     {
         uint8_t data = 0;
         PULSE0(RELEASE);
+        CLR0(RELEASE);
         // Send command
         gpio_set_value8(cmd);
         // Send low address byte
@@ -159,6 +160,7 @@ extern "C" {
     EXPORT void msxwrite(int cmd, unsigned short addr, unsigned char value)
     {
         PULSE0(RELEASE);
+        CLR0(RELEASE);
         // Send command
         gpio_set_value8(cmd);
         // // // Send data
