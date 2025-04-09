@@ -84,8 +84,8 @@ set_location_assignment PIN_96 -to SLTSL1_CS12
 
 set_location_assignment PIN_42 -to RELEASE
 set_location_assignment PIN_18 -to RWAIT
-set_location_assignment PIN_17 -to CS
-set_location_assignment PIN_43 -to PCLK
+set_location_assignment PIN_17 -to RAS_RD
+set_location_assignment PIN_43 -to RAS_WR
 set_location_assignment PIN_16 -to MD[15]
 set_location_assignment PIN_15 -to MD[14]
 set_location_assignment PIN_41 -to MD[13]
