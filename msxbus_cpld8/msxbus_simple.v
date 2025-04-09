@@ -94,6 +94,7 @@ reg rdata_drive;
 // Add data_drive register declaration
 reg [7:0] data_out;
 reg data_drive;
+reg wait_check;
 
 // Add bidirectional control for DATA bus
 assign RDATA = rdata_drive ? rdata_out : 8'bZ;
@@ -141,7 +142,7 @@ always @(posedge CLK) begin
         clk_divider <= clk_divider + 1'b1;
     end
 end
-assign MCLK = mclk_out;
+assign MCLK = CLK;
 
 // Add initial values for registers
 // CS 관련 initial 값 제거하고 수정
@@ -157,78 +158,90 @@ initial begin
     RESET = 1'b1;
     rdata_drive = 1'b0;
     data_drive = 1'b0;
-    data_out = 8'hFF;
-    rdata_out = 8'hFF;
+    data_out = 8'hZZ;
+    rdata_out = 8'hZZ;
     clk_divider = 8'd0;
     mclk_out = 1'b0;
     cmd = 8'h00;
 end
 
 // CS 제거하고 RAS_RD, RAS_WR만 사용하도록 수정
-always @(negedge RAS_RD or negedge RAS_WR) begin
-    if (!RAS_WR) begin  // Write operation from FT323H
-        case (state)
-            IDLE: begin
-                cmd <= RDATA;
-                state <= GET_CMD;
-            end
-            GET_CMD: begin
-                if (cmd[0]) begin  // Write command
-                    data_out <= RDATA;
+always @(negedge RAS_RD or negedge RAS_WR or posedge RELEASE) begin
+    if (RELEASE) begin
+        RD <= 1'b1;
+        WR <= 1'b1;
+        MREQ <= 1'b1;
+        IORQ <= 1'b1;
+        SLTSL1 <= 1'b1;
+        SLTSL2 <= 1'b1;
+        state <= IDLE;
+        rdata_out <= 8'h00;
+        data_drive <= 1'b0;
+    end else begin
+        if (!RAS_WR) begin  // Write operation from FT323H
+            rdata_drive <= 1'b0;
+            wait_check <= 1'b0;
+            case (state)
+                IDLE: begin
+                    cmd = RDATA;
+                    if (cmd[0]) begin  // Write command
+                        state <= GET_DATA;
+                    end else begin     // Read command
+                        state <= GET_ADDR_L;
+                    end
+                end
+                GET_DATA: begin
+                    data_out = RDATA;
+                    data_drive <= 1'b1;
                     state <= GET_ADDR_L;
-                end else begin     // Read command
-                    ADDR[7:0] <= RDATA;
+                end
+                GET_ADDR_L: begin
+                    ADDR[7:0] = RDATA;
                     state <= GET_ADDR_H;
                 end
-            end
-            GET_ADDR_L: begin
-                ADDR[7:0] <= RDATA;
-                state <= GET_ADDR_H;
-            end
-            GET_ADDR_H: begin
-                ADDR[15:8] <= RDATA;
-                if (!cmd[1]) begin  // Memory access
-                    SLTSL1 <= cmd[4];
-                    SLTSL2 <= !cmd[4];
-                    MREQ <= 1'b0;
-                end else begin      // I/O access
-                    IORQ <= 1'b0;
+                GET_ADDR_H: begin
+                    ADDR[15:8] = RDATA;
+                    if (!cmd[1]) begin  // Memory access
+                        SLTSL1 <= cmd[4];
+                        SLTSL2 <= !cmd[4];
+                        MREQ <= 1'b0;
+                    end else begin      // I/O access
+                        IORQ <= 1'b0;
+                    end
+                    if (cmd[0]) begin  // Write operation
+                        state <= WRITE_MSXBUS;
+                        data_drive <= 1'b1;
+                        WR <= 1'b0;
+                    end else begin      // Read operation
+                        state <= READ_MSXBUS;
+                        data_drive <= 1'b0;
+                        RD <= 1'b0;
+                    end
                 end
-                
-                if (cmd[0]) begin  // Write operation
-                    state <= WRITE_MSXBUS;
-                    data_drive <= 1'b1;
-                    WR <= 1'b0;
-                end else begin      // Read operation
-                    state <= READ_MSXBUS;
-                    rdata_out <= 8'h00;
-                    RD <= 1'b0;
-                end
-            end
-        endcase
-    end else if (!RAS_RD) begin  // Read operation from FT323H
-        rdata_drive <= 1'b1;
-        case (state)
-            READ_MSXBUS: begin
+            endcase
+        end else if (!RAS_RD) begin  // Read operation from FT323H
+            rdata_drive = 1'b1;
+            if (!cmd[0]) begin
                 if (WAIT) begin
-                    if (rdata_out == 8'h00)
-                        rdata_out <= 8'hff;
-                    else if (rdata_out == 8'hff)
-                        rdata_out <= DATA;
+                    if (wait_check == 1'b0) begin
+                        rdata_out = 8'hff;
+                        wait_check <= 1'b1;
+                    end else begin
+                        rdata_out = DATA;
+                        state <= COMPLETE;
+                    end
+                end else begin
+                    rdata_out = 8'h00;
+                end
+            end else begin
+                if (WAIT) begin
+                    rdata_out = 8'hff;
                     state <= COMPLETE;
                 end else begin
-                    rdata_out <= 8'h00;
+                    rdata_out = 8'h00;
                 end
             end
-            WRITE_MSXBUS: begin
-                if (WAIT) begin
-                    rdata_out <= 8'hff;
-                    state <= COMPLETE;
-                end else begin
-                    rdata_out <= 8'h00;
-                end
-            end
-            COMPLETE: begin
+            if (state == COMPLETE) begin
                 RD <= 1'b1;
                 WR <= 1'b1;
                 MREQ <= 1'b1;
@@ -236,10 +249,10 @@ always @(negedge RAS_RD or negedge RAS_WR) begin
                 SLTSL1 <= 1'b1;
                 SLTSL2 <= 1'b1;
                 state <= IDLE;
-                rdata_out <= 8'hff;
+                rdata_out <= 8'h00;
                 data_drive <= 1'b0;
             end
-        endcase
+        end
     end
 end
 
