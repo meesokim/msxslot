@@ -158,11 +158,12 @@ initial begin
     RESET = 1'b1;
     rdata_drive = 1'b0;
     data_drive = 1'b0;
-    data_out = 8'hZZ;
-    rdata_out = 8'hZZ;
+    data_out = 8'h0;
+    rdata_out = 8'h0;
     clk_divider = 8'd0;
     mclk_out = 1'b0;
     cmd = 8'h00;
+    wait_check = 1'b0;
 end
 
 // CS 제거하고 RAS_RD, RAS_WR만 사용하도록 수정
