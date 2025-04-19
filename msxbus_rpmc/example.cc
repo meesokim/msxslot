@@ -79,7 +79,7 @@ int main(int argc, char **argv)
     {
         char c = argv[1][0]; 
         if (c == '1')
-            dump(0x4000, 0x400, 0);
+            dump(0x4000, 0x8000, 0);
         else if (c == '2')
         {
             FILE *f = fopen("rpmp.rom", "wb");

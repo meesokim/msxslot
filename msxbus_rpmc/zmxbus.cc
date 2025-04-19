@@ -129,7 +129,6 @@ void init(char *path)
             bcm2835_gpio_set_pud(i, dir[i] ? BCM2835_GPIO_PUD_OFF : BCM2835_GPIO_PUD_UP);
 	} 
     reset(10);
-
     // req.tv_sec = 0;
     // req.tv_nsec = 1000;
     // // printf("%x\n", GPIO_GET());
@@ -184,7 +183,7 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
 	printf("WI:%02x,%02x\n", addr, value);
     }
     CLR0(WR | DAT_DIR | LE_C);
-    int tries = 5;
+    int tries = 1;
     do {
         LEV0();
     } while(!(LEV0() & WAIT) || tries--);
@@ -204,6 +203,6 @@ void reset(int ms)
     SET0(RESET);
     SET0(LE_C | 0xff00);
     CLR0(LE_C);     
-    msxread(RD_IO, 0);
+    msxwrite(WR_IO, 0, 0);
 }
 }

@@ -9,6 +9,8 @@ int main(int argc, char **argv)
 {
     char *error;
     char dir[256];
+    unsigned short err_addr[0x100];
+    unsigned short eaddr;
     bool output = true;
     ReadfnPtr read = NULL;
     WritefnPtr write = NULL;
@@ -44,17 +46,22 @@ int main(int argc, char **argv)
                     printf("%04x:", i);
 		        int sum = 0;
                 bool e = false;
-                for (int j = 0; j < 10; j++)
+                for (int j = 0; j < 50; j++)
                 {
                     b = read(RD_SLTSL1, i);
                     if ( j > 0 && c != b)
                     {
                         e = true;
+			eaddr = i;
                     }
                     c = b;
                 }
                 if (e)
+		{
+		    if (nerror < 0x100)
+		       err_addr[nerror] = eaddr;
                     nerror++;
+		}
                 if (output)
                 {
                     printf(e ? "\u001b[31m%02x\u001b[0m " : "\u001b[0m%02x\u001b[0m ", b);
@@ -69,6 +76,9 @@ int main(int argc, char **argv)
             write(WR_SLTSL1, 0x4000, 0x1);
     }
     CloseZemmix(hDLL);
-    printf("\nËrror:%d\n", nerror);
+    printf("\nError:%d\n", nerror);
+    for(int i = 0; i < nerror; i++)
+        printf("%04x,", err_addr[i]);
+    printf("\n");
     return 0;
 }
