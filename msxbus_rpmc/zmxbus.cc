@@ -173,8 +173,7 @@ unsigned char msxread(int cmd, unsigned short addr)
     //     CLR0(MREQ | RD | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | 0xff | LE_D);
     // else
     //     CLR0(IORQ | RD | 0xff | LE_D);
-    int tries = 1;
-    b = LEV0(); b = LEV0();
+    int tries = 4;
     do {
         b = LEV0();
     } while(!(LEV0() & WAIT) || tries--);
@@ -217,7 +216,7 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
 	// printf("WI:%02x,%02x\n", addr, value);
     // }
     CLR0(WR | DAT_DIR | LE_C);
-    int tries = 1;
+    int tries = 2;
     LEV0();
     LEV0();
     do {
