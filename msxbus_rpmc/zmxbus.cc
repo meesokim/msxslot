@@ -113,7 +113,7 @@ static volatile unsigned *gpio;
 /* This is the critical section object (statically allocated). */
 static pthread_mutex_t cs_mutex =  PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
-#define TRIES 4
+#define TRIES 6
 
 void reset(int );
 int dir[28] = { 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 5,1,1,1,0,0,0,0 };
@@ -130,6 +130,8 @@ void init(char *path)
             bcm2835_gpio_set_pud(i, dir[i] ? BCM2835_GPIO_PUD_OFF : BCM2835_GPIO_PUD_UP);
 	} 
     reset(10);
+    SET0(0xff00 | LE_C);
+    CLR0(LE_C);
     // req.tv_sec = 0;
     // req.tv_nsec = 1000;
     // // printf("%x\n", GPIO_GET());
@@ -144,7 +146,7 @@ inline void SetAddress(unsigned short addr)
     SET0(00);
     CLR0(LE_A); 
     SET0(0xff00);
-    CLR0(0xff);
+    //CLR0(0xff);
     SET0(LE_C);
     CLR0(0xff);
 }
@@ -178,6 +180,7 @@ unsigned char msxread(int cmd, unsigned short addr)
     while(!(LEV0() & WAIT) || tries-->0);
     b = LEV0();
     SET0(0xff00 | LE_D);
+    CLR0(0); SET0(0); 
     CLR0(LE_C); 
     //pthread_mutex_unlock( &cs_mutex );
     return b;
@@ -186,36 +189,38 @@ unsigned char msxread(int cmd, unsigned short addr)
 void msxwrite(int cmd, unsigned short addr, unsigned char value)
 {
     if (addr > 0xc000) return;
-    // __sync_synchronize();
+    __sync_synchronize();
     //pthread_mutex_lock( &cs_mutex );    
     SetAddress(addr);
     SET0(0xff00 | value);
     CLR0(DAT_DIR | LE_D);
-    CLR0(WR | LE_D); SET0(value);
+    //CLR0(LE_D); SET0(value);
+    //CLR0(0); SET0(0);
     //__sync_synchronize();
     switch(cmd) {
         case WR_SLTSL1:
-            CLR0(MREQ | (addr & 0x8000? CS2 : 0) | (addr & 0x4000? CS1 : 0) | SLTSL1);
+            CLR0(MREQ | WR | (addr & 0x8000? CS2 : 0) | (addr & 0x4000? CS1 : 0) | SLTSL1);
             break;
         case WR_SLTSL2:
-            CLR0(MREQ | (addr & 0x8000? CS2 : 0) | (addr & 0x4000? CS1 : 0) | SLTSL2);
+            CLR0(MREQ | WR | (addr & 0x8000? CS2 : 0) | (addr & 0x4000? CS1 : 0) | SLTSL2);
             break;
         case WR_MEM:
-            CLR0(MREQ) ;
+            CLR0(MREQ | WR) ;
             break;
         case WR_IO:
-            CLR0(IORQ);
+            CLR0(IORQ | WR);
             break;
         default:
             break;
     }    
-    SET0(0); CLR0(0);
+    //SET0(0); CLR0(0); SET0(0); CLR0(0);
     int tries = TRIES;
     char b;
     while(!(LEV0() & WAIT) || tries-->0);
-    SET0(LE_D);
     SET0(0xff00);
+    CLR0(0);
     CLR0(LE_C);
+    //SET0(LE_D);
     // printf("WI:%02x,%02x\n", addr, value);
     //pthread_mutex_unlock( &cs_mutex );
 }
