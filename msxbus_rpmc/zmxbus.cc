@@ -113,7 +113,7 @@ static volatile unsigned *gpio;
 /* This is the critical section object (statically allocated). */
 static pthread_mutex_t cs_mutex =  PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
-#define TRIES 5
+#define TRIES 4
 
 void reset(int );
 int dir[28] = { 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 5,1,1,1,0,0,0,0 };
@@ -159,17 +159,17 @@ unsigned char msxread(int cmd, unsigned short addr)
     switch(cmd) {
         case RD_SLTSL1:
             if (addr > 0xc000) return 0xff;
-            CLR0(MREQ | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | LE_D);
+            CLR0(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1);
             break;
         case RD_SLTSL2:
             if (addr > 0xc000) return 0xff;
-            CLR0(MREQ | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL2 | LE_D);
+            CLR0(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL2);
             break;
         case RD_MEM:
-            CLR0(MREQ | 0xff | LE_D);
+            CLR0(MREQ);
             break;
         case RD_IO:
-            CLR0(IORQ | 0xff | LE_D);
+            CLR0(IORQ);
         default:
             break;
     }           
