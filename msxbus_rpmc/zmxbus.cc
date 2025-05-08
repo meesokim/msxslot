@@ -113,6 +113,7 @@ static volatile unsigned *gpio;
 /* This is the critical section object (statically allocated). */
 static pthread_mutex_t cs_mutex =  PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
+#define TRIES 5
 
 void reset(int );
 int dir[28] = { 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 5,1,1,1,0,0,0,0 };
@@ -137,12 +138,15 @@ void init(char *path)
 inline void SetAddress(unsigned short addr) 
 {
     // GPIO_SEL(0, 0x49249249);
-    CLR0(0xff);
-    SET0(addr & 0xff | LE_A);
-    CLR0(0xff00);
-    SET0(addr & 0xff00);
+    CLR0(0xffff);
+    SET0(addr & 0xffff | LE_A);
+    CLR0(0x00);
+    SET0(00);
     CLR0(LE_A); 
-    SET0(LE_C | LE_D | 0xffff | DAT_DIR);
+    SET0(0xff00);
+    CLR0(0xff);
+    SET0(LE_C);
+    CLR0(0xff);
 }
 
 unsigned char msxread(int cmd, unsigned short addr) 
@@ -155,28 +159,23 @@ unsigned char msxread(int cmd, unsigned short addr)
     switch(cmd) {
         case RD_SLTSL1:
             if (addr > 0xc000) return 0xff;
-            CLR0(MREQ | RD | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | LE_D);
+            CLR0(MREQ | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | LE_D);
             break;
         case RD_SLTSL2:
             if (addr > 0xc000) return 0xff;
-            CLR0(MREQ | RD | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL2 | LE_D);
+            CLR0(MREQ | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL2 | LE_D);
             break;
         case RD_MEM:
-            CLR0(MREQ | RD | 0xff | LE_D);
+            CLR0(MREQ | 0xff | LE_D);
             break;
         case RD_IO:
-            CLR0(IORQ | RD | 0xff | LE_D);
+            CLR0(IORQ | 0xff | LE_D);
         default:
             break;
     }           
-    // if (cmd < RD_IO)
-    //     CLR0(MREQ | RD | 0xff | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1 | 0xff | LE_D);
-    // else
-    //     CLR0(IORQ | RD | 0xff | LE_D);
-    int tries = 4;
-    do {
-        b = LEV0();
-    } while(!(LEV0() & WAIT) || tries--);
+    SET0(DAT_DIR);
+    int tries = TRIES;
+    while(!(LEV0() & WAIT) || tries-->0);
     b = LEV0();
     SET0(0xff00 | LE_D);
     CLR0(LE_C); 
@@ -190,9 +189,10 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
     // __sync_synchronize();
     //pthread_mutex_lock( &cs_mutex );    
     SetAddress(addr);
-    CLR0(0xff | LE_D | DAT_DIR);
-    // GPIO_CLR(DAT_DIR | 0xff | LE_D);
-    SET0(value);
+    SET0(0xff00 | value);
+    CLR0(DAT_DIR | LE_D);
+    CLR0(WR | LE_D); SET0(value);
+    //__sync_synchronize();
     switch(cmd) {
         case WR_SLTSL1:
             CLR0(MREQ | (addr & 0x8000? CS2 : 0) | (addr & 0x4000? CS1 : 0) | SLTSL1);
@@ -201,7 +201,7 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
             CLR0(MREQ | (addr & 0x8000? CS2 : 0) | (addr & 0x4000? CS1 : 0) | SLTSL2);
             break;
         case WR_MEM:
-            CLR0(MREQ);
+            CLR0(MREQ) ;
             break;
         case WR_IO:
             CLR0(IORQ);
@@ -209,20 +209,12 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
         default:
             break;
     }    
-    // if (cmd < WR_IO)
-    //     CLR0(MREQ | (addr & 0x8000 ? CS2 : 0) | (addr & 0x4000 ? CS1 : 0) | SLTSL1);
-    // else {
-    //     CLR0(IORQ);
-	// printf("WI:%02x,%02x\n", addr, value);
-    // }
-    CLR0(WR | DAT_DIR | LE_C);
-    int tries = 2;
-    LEV0();
-    LEV0();
-    do {
-        LEV0();
-    } while(!(LEV0() & WAIT) || tries--);
-    SET0(0xff00 | LE_C);
+    SET0(0); CLR0(0);
+    int tries = TRIES;
+    char b;
+    while(!(LEV0() & WAIT) || tries-->0);
+    SET0(LE_D);
+    SET0(0xff00);
     CLR0(LE_C);
     // printf("WI:%02x,%02x\n", addr, value);
     //pthread_mutex_unlock( &cs_mutex );
@@ -232,12 +224,13 @@ void reset(int ms)
 {
     // SET0(LE_A | LE_C | LE_D | 0xffff);
     // CLR0(LE_A | LE_C);
-    SET0(RESET);
-    CLR0(RESET);
-    for (int i = 0; i < 1000 * ms; i++) SET0(0);
-    SET0(RESET);
-    SET0(LE_C | 0xff00);
-    CLR0(LE_C);     
+    // SET0(RESET);
+    // CLR0(RESET);
+    // for (int i = 0; i < 1000 * ms; i++) SET0(0);
+    // SET0(RESET);
+    // SET0(LE_C | 0xff00);
+    // CLR0(LE_C);     
     msxwrite(WR_IO, 0, 0);
+    msxread(RD_SLTSL1, 0x4000);
 }
 }
