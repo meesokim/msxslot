@@ -23,7 +23,7 @@ libinfo: libinfo.o
 	$(CC) $(FLAGS) -o $@ $^ -ldl -g
 
 zmxclk: zmxclk.o
-	$(CC) $(FLAGS) -o $@ $^ -lbcm2835
+	$(CC) $(FLAGS) -o $@ $^ -lbcm2835 -L../lib
 
 example: example.o zmx.o
 	$(CC) $(FLAGS) -o $@ $^ -ldl
@@ -36,7 +36,7 @@ example: example.o zmx.o
 
 
 $(TARGET).$(EXT): $(OBJS)
-	$(CC) $(FLAGS) $(CFLAGS) $(RELEASEFLAGS) -o $(TARGET).$(EXT) $(OBJS) -lbcm2835
+	$(CC) $(FLAGS) $(CFLAGS) $(RELEASEFLAGS) -o $(TARGET).$(EXT) $(OBJS) -L../lib -lbcm2835
 
 clean:
 	$(RM) $(OBJS) $(TARGET).$(EXT) libinfo zmxdump *.o
