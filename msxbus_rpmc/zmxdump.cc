@@ -71,7 +71,7 @@ int main(int argc, char **argv)
             }
         }
         if (reset)
-            reset(500);
+            reset(0);
         if (write)
             write(WR_SLTSL1, 0x4000, 0x1);
     }

@@ -146,9 +146,9 @@ inline void SetAddress(unsigned short addr)
     SET0(00);
     CLR0(LE_A); 
     SET0(0xff00);
-    //CLR0(0xff);
     SET0(LE_C);
     CLR0(0xff);
+    CLR0(0);
 }
 
 unsigned char msxread(int cmd, unsigned short addr) 
@@ -189,11 +189,11 @@ unsigned char msxread(int cmd, unsigned short addr)
 void msxwrite(int cmd, unsigned short addr, unsigned char value)
 {
     if (addr > 0xc000) return;
-    __sync_synchronize();
+    //__sync_synchronize();
     //pthread_mutex_lock( &cs_mutex );    
     SetAddress(addr);
-    SET0(0xff00 | value);
-    CLR0(DAT_DIR | LE_D);
+    SET0(value);
+    CLR0(DAT_DIR | LE_D | WR);
     //CLR0(LE_D); SET0(value);
     //CLR0(0); SET0(0);
     //__sync_synchronize();
@@ -213,8 +213,7 @@ void msxwrite(int cmd, unsigned short addr, unsigned char value)
         default:
             break;
     }    
-    //SET0(0); CLR0(0); SET0(0); CLR0(0);
-    int tries = TRIES;
+    int tries = TRIES*2;
     char b;
     while(!(LEV0() & WAIT) || tries-->0);
     SET0(0xff00);
